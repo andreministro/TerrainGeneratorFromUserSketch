@@ -3,6 +3,8 @@ using System.Collections;
 public class FPSCamMovement : MonoBehaviour
 {
     Vector2 rot;
+    public float speed = 2f;
+
 
     void Update()
     {
@@ -13,7 +15,7 @@ public class FPSCamMovement : MonoBehaviour
         transform.localRotation = Quaternion.AngleAxis(rot.x, Vector3.up);
         transform.localRotation *= Quaternion.AngleAxis(rot.y, Vector3.left);
 
-        transform.position += transform.forward * 2 * Input.GetAxis("Vertical");
-        transform.position += transform.right * 2 * Input.GetAxis("Horizontal");
+        transform.position += transform.forward * speed * Input.GetAxis("Vertical");
+        transform.position += transform.right * speed * Input.GetAxis("Horizontal");
     }
 }

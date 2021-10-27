@@ -152,9 +152,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4121d9adab8cd094082967a79a52ed1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  image: {fileID: 0}
+  image: {fileID: 2800000, guid: c875ce4efab18fc45b67c00bc5601d88, type: 3}
   world: {fileID: 1331530268}
-  seed: 10
+  seed: 0
   bluePos: []
   yellowPos: []
   magentaPos: []
@@ -249,7 +249,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 230316148}
   m_LocalRotation: {x: 0.23911765, y: 0.3696438, z: -0.09904577, w: 0.89239913}
-  m_LocalPosition: {x: -80, y: 60, z: -80}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 399854549}
@@ -661,6 +661,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0669d27032a38dc47ab1de79f1cf278c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  speed: 2
 --- !u!20 &1499909926
 Camera:
   m_ObjectHideFlags: 0
