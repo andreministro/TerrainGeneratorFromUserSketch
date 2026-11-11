@@ -1,6 +1,5 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine.Windows;
+using System.IO;
 using UnityEngine;
 
 public class Sketch : MonoBehaviour
