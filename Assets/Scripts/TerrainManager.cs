@@ -6,7 +6,7 @@ using Debug = UnityEngine.Debug;
 
 public class TerrainManager : MonoBehaviour
 {
-    internal const int MaxSketchSize = 256;
+    internal const int MaxSketchSize = 512;
 
     public Dictionary<WorldPosition, Chunk> chunks = new Dictionary<WorldPosition, Chunk>();
     public GameObject chunkPrefab;
