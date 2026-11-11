@@ -2,54 +2,74 @@
 
 public class ReadImage : MonoBehaviour
 {
+    private static (byte[] Png, int Seed)? queuedSketch;
+
     [SerializeField]
     public Texture2D image;
 
     public TerrainManager world;
     public int seed;
 
+    private Texture2D runtimeSketch;
     private Biome[] biomes;
 
     public int mapWidth;
     public int mapHeight;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetQueuedSketch()
+    {
+        queuedSketch = null;
+    }
+
+    internal static void QueueSketch(byte[] png, int seed)
+    {
+        queuedSketch = (png, seed);
+    }
+
     public void DisplayImage()
     {
-        //Prepare input texture
-        Texture2D duplicateTexture(Texture2D image)
+        if (queuedSketch.HasValue)
         {
-            RenderTexture renderTex = RenderTexture.GetTemporary(
-                        image.width,
-                        image.height,
-                        0,
-                        RenderTextureFormat.Default,
-                        RenderTextureReadWrite.Linear);
+            var (png, queuedSeed) = queuedSketch.Value;
+            queuedSketch = null;
 
-            Graphics.Blit(image, renderTex);
-            RenderTexture previous = RenderTexture.active;
-            RenderTexture.active = renderTex;
-            Texture2D readableText = new Texture2D(image.width, image.height);
-            readableText.ReadPixels(new Rect(0, 0, renderTex.width, renderTex.height), 0, 0);
-            readableText.filterMode = FilterMode.Point;
-            readableText.wrapMode = TextureWrapMode.Clamp;
-            readableText.Apply();
-            RenderTexture.active = previous;
-            RenderTexture.ReleaseTemporary(renderTex);
-            return readableText;
+            runtimeSketch = new Texture2D(2, 2, TextureFormat.RGBA32, mipChain: false)
+            {
+                name = "savedSketch",
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            if (!runtimeSketch.LoadImage(png))
+            {
+                Debug.LogError("The saved sketch PNG could not be loaded.", this);
+                return;
+            }
+
+            image = runtimeSketch;
+            seed = queuedSeed;
         }
 
-        Texture2D copy = duplicateTexture(image);
+        if (image == null)
+        {
+            Debug.LogError("Open the sketch scene and save a sketch, or assign a PNG to ImageReader.", this);
+            return;
+        }
 
-        Color[] colorMapSketch = copy.GetPixels();
+        if (!TerrainManager.IsSupportedSketchSize(image.width, image.height))
+        {
+            Debug.LogError($"Use a square sketch between 1 × 1 and {TerrainManager.MaxSketchSize} × {TerrainManager.MaxSketchSize}.", this);
+            return;
+        }
 
         mapWidth = image.width;
         mapHeight = image.height;
-
-        biomes = new Biome[colorMapSketch.Length];
+        Color[] pixels = image == runtimeSketch ? image.GetPixels() : ReadImportedPixels(image);
+        biomes = new Biome[pixels.Length];
         int adjustedPixelCount = 0;
-        for (int i = 0; i < colorMapSketch.Length; i++)
+        for (int i = 0; i < pixels.Length; i++)
         {
-            biomes[i] = BiomePalette.Decode(colorMapSketch[i], out bool adjusted);
+            biomes[i] = BiomePalette.Decode(pixels[i], out bool adjusted);
             if (adjusted)
                 adjustedPixelCount++;
         }
@@ -64,6 +84,27 @@ public class ReadImage : MonoBehaviour
         world.CreateFromSketch(mapWidth, mapHeight);
     }
 
+    private static Color[] ReadImportedPixels(Texture2D source)
+    {
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture temporary = RenderTexture.GetTemporary(
+            source.width, source.height, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+        var readable = new Texture2D(source.width, source.height, TextureFormat.RGBA32, mipChain: false);
+        try
+        {
+            Graphics.Blit(source, temporary);
+            RenderTexture.active = temporary;
+            readable.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0);
+            return readable.GetPixels();
+        }
+        finally
+        {
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(temporary);
+            Destroy(readable);
+        }
+    }
+
     internal Biome GetBiome(int worldX, int worldZ)
     {
         int x = worldX + mapWidth / 2;
@@ -72,5 +113,11 @@ public class ReadImage : MonoBehaviour
             return Biome.None;
 
         return biomes[z * mapWidth + x];
+    }
+
+    private void OnDestroy()
+    {
+        if (runtimeSketch != null)
+            Destroy(runtimeSketch);
     }
 }

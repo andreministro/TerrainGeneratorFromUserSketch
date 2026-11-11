@@ -1,5 +1,4 @@
-﻿using System.IO;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
 [RequireComponent(typeof(MeshCollider), typeof(MeshRenderer))]
@@ -7,8 +6,7 @@ public class Sketch : MonoBehaviour
 {
     private static readonly int MainTexture = Shader.PropertyToID("_MainTex");
 
-    [SerializeField, Min(1)] private int resolution = 32;
-
+    private int resolution;
     private MeshCollider canvasCollider;
     private Camera viewCamera;
     private Texture2D canvasTexture;
@@ -17,8 +15,9 @@ public class Sketch : MonoBehaviour
     private bool strokeActive;
     private Vector2Int? lastPixel;
 
-    private void Awake()
+    internal void OpenCanvas(int size)
     {
+        resolution = size;
         canvasCollider = GetComponent<MeshCollider>();
         viewCamera = Camera.main;
         canvasTexture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, mipChain: false)
@@ -179,12 +178,7 @@ public class Sketch : MonoBehaviour
     public void ChangeBrushtoSavannah() => brushColor = BiomePalette.GetColor(Biome.Savannah);
     public void ChangeBrushtoTropicalForest() => brushColor = BiomePalette.GetColor(Biome.TropicalForest);
 
-    public void Save()
-    {
-        string path = Path.Combine(Application.dataPath, "savedSketch.png");
-        File.WriteAllBytes(path, canvasTexture.EncodeToPNG());
-        Debug.Log($"Saved sketch to {path}.", this);
-    }
+    internal byte[] EncodePng() => canvasTexture.EncodeToPNG();
 
     private void OnDestroy()
     {

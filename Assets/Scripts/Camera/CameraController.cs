@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
@@ -10,6 +8,9 @@ public class CameraController : MonoBehaviour
     public Camera FPSCam;
 
     public GameObject Player;
+
+    [SerializeField] private TerrainManager terrain;
+    private float framedAspect;
 
     void Start()
     {
@@ -22,8 +23,6 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        ChangeSettingsOrtho();
-
         if (Input.GetKeyDown(KeyCode.K))
         {
             orthoCam.enabled = false;
@@ -60,45 +59,50 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    private void LateUpdate()
+    {
+        if (orthoCam.enabled && framedAspect != orthoCam.aspect)
+            ChangeSettingsOrtho();
+    }
+
     public void ChangeSettingsOrtho()
     {
-        GameObject imgReader = GameObject.Find("ImageReader");
-        ReadImage readImage = imgReader.GetComponent<ReadImage>();
+        Bounds bounds = default;
+        bool hasTerrain = false;
+        foreach (var chunk in terrain.chunks.Values)
+        {
+            Mesh mesh = chunk.GetComponent<MeshFilter>().sharedMesh;
+            if (chunk.update || mesh == null)
+                return;
+            if (mesh.vertexCount == 0)
+                continue;
 
-        int width = readImage.mapWidth;
-        int height = readImage.mapHeight;
+            Bounds chunkBounds = chunk.GetComponent<MeshRenderer>().bounds;
+            if (hasTerrain)
+                bounds.Encapsulate(chunkBounds);
+            else
+            {
+                bounds = chunkBounds;
+                hasTerrain = true;
+            }
+        }
 
-        if (width == 32 && height == 32)
-        {
-            orthoCam.orthographicSize = 27f;
-            cameraTarget.transform.position = new Vector3(-25f, 21f, -25f);
+        if (!hasTerrain)
+            return;
 
-        }
-        else if (width == 64 && height == 64)
-        {
-            orthoCam.orthographicSize = 40f;
-            cameraTarget.transform.position = new Vector3(-30f, 28f, -30f);
-        }
-        else if (width == 128 && height == 128)
-        {
-            orthoCam.orthographicSize = 60f;
-            cameraTarget.transform.position = new Vector3(-65f, 55f, -65f);
-        }
-        else if (width == 256 && height == 256)
-        {
-            orthoCam.orthographicSize = 100f;
-            cameraTarget.transform.position = new Vector3(-120f, 95f, -120f);
-        }
-        else if (width == 512 && height == 512)
-        {
-            orthoCam.orthographicSize = 200f;
-            cameraTarget.transform.position = new Vector3(-200f, 160f, -200f);
-        }
-        else if (width == 1024 && height == 1024)
-        {
-            //orthoCam.orthographicSize = 400f;
-            //cameraTarget.transform.position = new Vector3(-100f, 80f, -100f);
-        }
+        Transform view = orthoCam.transform;
+        float halfWidth = ProjectExtent(bounds.extents, view.right);
+        float halfHeight = ProjectExtent(bounds.extents, view.up);
+        float halfDepth = ProjectExtent(bounds.extents, view.forward);
+        Vector3 position = bounds.center - view.forward * (halfDepth + 10f);
+        cameraTarget.transform.position += position - view.position;
+        orthoCam.orthographicSize = Mathf.Max(halfHeight, halfWidth / orthoCam.aspect) * 1.1f + 0.5f;
+        framedAspect = orthoCam.aspect;
+    }
+
+    private static float ProjectExtent(Vector3 extents, Vector3 axis)
+    {
+        return extents.x * Mathf.Abs(axis.x) + extents.y * Mathf.Abs(axis.y) + extents.z * Mathf.Abs(axis.z);
     }
 
     public void ChangeSettingsFPS()

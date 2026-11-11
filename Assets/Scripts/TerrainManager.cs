@@ -1,9 +1,10 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class TerrainManager : MonoBehaviour
 {
+    internal const int MaxSketchSize = 256;
+
     public Dictionary<WorldPosition, Chunk> chunks = new Dictionary<WorldPosition, Chunk>();
     public GameObject chunkPrefab;
     public ReadImage readImg;
@@ -60,127 +61,46 @@ public class TerrainManager : MonoBehaviour
         }
     }
 
+    internal static bool IsSupportedSketchSize(int width, int height)
+    {
+        return width == height && width >= 1 && width <= MaxSketchSize;
+    }
+
     public void CreateFromSketch(int width, int height)
     {
-        if(width >= 32 && height >= 32)
+        if (!IsSupportedSketchSize(width, height))
         {
-            if (isPowerOfTwo(width) && isPowerOfTwo(height))
-            {
-                var terrainGeneration = new TerrainGeneration(readImg);
-
-                if (width == 32 && height == 32)
-                {
-                    for (int x = -1; x < 1; x++)
-                    {
-                        for (int y = -1; y < 2; y++)
-                        {
-                            for (int z = -1; z < 1; z++)
-                            {
-                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
-                            }
-                        }
-                    }
-                }
-                else if (width == 64 && height == 64)
-                {
-                    for (int x = -2; x < 2; x++)
-                    {
-                        for (int y = -1; y < 2; y++)
-                        {
-                            for (int z = -2; z < 2; z++)
-                            {
-                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
-                            }
-                        }
-                    }
-                }
-                else if (width == 128 && height == 128)
-                {
-                    for (int x = -4; x < 4; x++)
-                    {
-                        for (int y = -1; y <= 3; y++)
-                        {
-                            for (int z = -4; z < 4; z++)
-                            {
-                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
-                            }
-                        }
-                    }
-                }
-                else if (width == 256 && height == 256)
-                {
-                    for (int x = -8; x < 8; x++)
-                    {
-                        for (int y = -1; y <= 3; y++)
-                        {
-                            for (int z = -8; z < 8; z++)
-                            {
-                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
-                            }
-                        }
-                    }
-                }
-                else if (width == 512 && height == 512)
-                {
-                    for (int x = -16; x < 16; x++)
-                    {
-                        for (int y = -1; y <= 3; y++)
-                        {
-                            for (int z = -16; z < 16; z++)
-                            {
-                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
-                            }
-                        }
-                    }
-                }
-                else if (width == 1024 && height == 1024)
-                {
-                    for (int x = -32; x < 32; x++)
-                    {
-                        for (int y = -1; y <= 3; y++)
-                        {
-                            for (int z = -32; z < 32; z++)
-                            {
-                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    Debug.Log("The size you want for the terrain is larger than the largest this Framework supports. If you want to feed a larger sketch, change the CreateFromSketch() function from the TerrainManager script to contemplate the change");
-                }
-            }
-            else
-            {
-                Debug.Log("Invalid terrain size. Input a sketch with a side size of a power of 2");
-            }
+            Debug.LogError($"Use a square sketch between 1 × 1 and {MaxSketchSize} × {MaxSketchSize}.", this);
+            return;
         }
-        else
+
+        int chunkSize = Chunk.chunkSize;
+        int minCoordinate = -(width / 2);
+        int minChunk = GetChunkOrigin(minCoordinate);
+        int maxChunk = GetChunkOrigin(minCoordinate + width - 1);
+        int topChunk = width <= 64 ? chunkSize : 3 * chunkSize;
+        var terrainGeneration = new TerrainGeneration(readImg);
+
+        for (int x = minChunk; x <= maxChunk; x += chunkSize)
         {
-            Debug.Log("The terrain needs to be > 32");
+            for (int y = -chunkSize; y <= topChunk; y += chunkSize)
+            {
+                for (int z = minChunk; z <= maxChunk; z += chunkSize)
+                    CreateChunk(x, y, z, terrainGeneration);
+            }
         }
     }
 
-    static bool isPowerOfTwo(int n)
+    private static int GetChunkOrigin(int coordinate)
     {
-        return (int)(Mathf.Ceil((Mathf.Log(n) / Mathf.Log(2))))
-              == (int)(Mathf.Floor(((Mathf.Log(n) / Mathf.Log(2)))));
+        return Mathf.FloorToInt(coordinate / (float)Chunk.chunkSize) * Chunk.chunkSize;
     }
 
     public Chunk GetChunk(int x, int y, int z)
     {
-        WorldPosition pos = new WorldPosition();
-        float multiple = Chunk.chunkSize;
-        pos.x = Mathf.FloorToInt(x / multiple) * Chunk.chunkSize;
-        pos.y = Mathf.FloorToInt(y / multiple) * Chunk.chunkSize;
-        pos.z = Mathf.FloorToInt(z / multiple) * Chunk.chunkSize;
-
-        Chunk containerChunk = null;
-
-        chunks.TryGetValue(pos, out containerChunk);
-
-        return containerChunk;
+        var position = new WorldPosition(GetChunkOrigin(x), GetChunkOrigin(y), GetChunkOrigin(z));
+        chunks.TryGetValue(position, out Chunk chunk);
+        return chunk;
     }
 
     public Block GetBlock(int x, int y, int z)

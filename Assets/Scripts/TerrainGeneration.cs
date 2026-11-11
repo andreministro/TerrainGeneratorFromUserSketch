@@ -95,7 +95,32 @@ public class TerrainGeneration
             }
         }
 
+        ClearChunkPadding(chunk);
         return chunk;
+    }
+
+    private void ClearChunkPadding(Chunk chunk)
+    {
+        int minX = -(sketch.mapWidth / 2) - chunk.pos.x;
+        int minZ = -(sketch.mapHeight / 2) - chunk.pos.z;
+        int endX = minX + sketch.mapWidth;
+        int endZ = minZ + sketch.mapHeight;
+        int size = Chunk.chunkSize;
+        if (minX <= 0 && minZ <= 0 && endX >= size && endZ >= size)
+            return;
+
+        // Decorations near the sketch edge can extend into the padding of a partial chunk.
+        for (int x = 0; x < size; x++)
+        {
+            for (int z = 0; z < size; z++)
+            {
+                if (x >= minX && x < endX && z >= minZ && z < endZ)
+                    continue;
+
+                for (int y = 0; y < size; y++)
+                    chunk.blocks[x, y, z] = null;
+            }
+        }
     }
 
     //WATER 

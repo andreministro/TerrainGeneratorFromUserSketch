@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4121d9adab8cd094082967a79a52ed1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  image: {fileID: 2800000, guid: ccd20a1b815ac6e478aab590ece644a3, type: 3}
+  image: {fileID: 2800000, guid: c875ce4efab18fc45b67c00bc5601d88, type: 3}
   world: {fileID: 1331530268}
   seed: 0
   mapWidth: 0
@@ -347,6 +347,7 @@ MonoBehaviour:
   orthoCam: {fileID: 399854551}
   FPSCam: {fileID: 1499909926}
   Player: {fileID: 1758352855}
+  terrain: {fileID: 1331530268}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
