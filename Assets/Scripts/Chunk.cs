@@ -51,7 +51,7 @@ public class Chunk : MonoBehaviour
     public Block GetBlock(int x, int y, int z)
     {
         if (InRange(x) && InRange(y) && InRange(z))
-            return blocks[x, y, z];
+            return blocks[x, y, z] ?? BlockAir.Empty;
 
         return world.GetBlock(pos.x + x, pos.y + y, pos.z + z);
     }
@@ -76,13 +76,9 @@ public class Chunk : MonoBehaviour
             {
                 for (int z = 0; z < chunkSize; z++)
                 {
-                    if (blocks[x,y,z] == null)
-                    {
-                        blocks[x, y, z] = new BlockCactus();
-                        meshData = blocks[x, y, z].Blockdata(this, x, y, z, meshData);
-                    }
-                    else
-                    meshData = blocks[x, y, z].Blockdata(this, x, y, z, meshData);
+                    Block block = blocks[x, y, z];
+                    if (block != null)
+                        meshData = block.Blockdata(this, x, y, z, meshData);
                 }
             }
         }

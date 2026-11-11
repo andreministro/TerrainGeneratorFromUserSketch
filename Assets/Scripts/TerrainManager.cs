@@ -198,7 +198,7 @@ public class TerrainManager : MonoBehaviour
         }
         else
         {
-            return new BlockAir();
+            return BlockAir.Empty;
         }
     }
 

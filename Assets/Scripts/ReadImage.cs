@@ -15,6 +15,13 @@ internal enum Biome : byte
 
 public class ReadImage : MonoBehaviour
 {
+    // Indexed by the three RGB bits, from black (000) to white (111).
+    private static readonly Biome[] Palette =
+    {
+        Biome.Taiga, Biome.Water, Biome.TemperateForest, Biome.TropicalForest,
+        Biome.Savannah, Biome.AlpineTundra, Biome.HotDesert, Biome.ColdDesert
+    };
+
     [SerializeField]
     public Texture2D image;
 
@@ -25,8 +32,6 @@ public class ReadImage : MonoBehaviour
 
     public int mapWidth;
     public int mapHeight;
-
-    public static Color coloryellow = new Color32(255, 255, 0, 255);
 
     public void DisplayImage()
     {
@@ -61,8 +66,20 @@ public class ReadImage : MonoBehaviour
         mapHeight = image.height;
 
         biomes = new Biome[colorMapSketch.Length];
+        int adjustedPixelCount = 0;
         for (int i = 0; i < colorMapSketch.Length; i++)
-            biomes[i] = DecodeBiome(colorMapSketch[i]);
+        {
+            biomes[i] = DecodeBiome(colorMapSketch[i], out bool adjusted);
+            if (adjusted)
+                adjustedPixelCount++;
+        }
+
+        if (adjustedPixelCount > 0)
+        {
+            Debug.LogWarning(
+                $"Mapped {adjustedPixelCount} of {biomes.Length} off-palette or translucent pixels in sketch '{image.name}' to the nearest biome colors.",
+                this);
+        }
 
         world.CreateFromSketch(mapWidth, mapHeight);
     }
@@ -77,25 +94,22 @@ public class ReadImage : MonoBehaviour
         return biomes[z * mapWidth + x];
     }
 
-    private static Biome DecodeBiome(Color color)
+    private static Biome DecodeBiome(Color color, out bool adjusted)
     {
-        if (color.Equals(Color.blue))
-            return Biome.Water;
-        if (color.Equals(coloryellow))
-            return Biome.HotDesert;
-        if (color.Equals(Color.magenta))
-            return Biome.AlpineTundra;
-        if (color.Equals(Color.green))
-            return Biome.TemperateForest;
-        if (color.Equals(Color.white))
-            return Biome.ColdDesert;
-        if (color.Equals(Color.black))
-            return Biome.Taiga;
-        if (color.Equals(Color.red))
-            return Biome.Savannah;
-        if (color.Equals(Color.cyan))
-            return Biome.TropicalForest;
+        adjusted = color.a != 1f
+            || !IsPaletteChannel(color.r) || !IsPaletteChannel(color.g) || !IsPaletteChannel(color.b);
 
-        return Biome.None;
+        // Match the white background in the sketch canvas.
+        if (color.a < 1f)
+            color = Color.Lerp(Color.white, color, color.a);
+
+        // The eight palette colors are the corners of the RGB cube.
+        int index = (color.r >= 0.5f ? 4 : 0) | (color.g >= 0.5f ? 2 : 0) | (color.b >= 0.5f ? 1 : 0);
+        return Palette[index];
+    }
+
+    private static bool IsPaletteChannel(float channel)
+    {
+        return channel == 0f || channel == 1f;
     }
 }
