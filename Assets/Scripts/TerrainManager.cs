@@ -2,43 +2,95 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Debug = UnityEngine.Debug;
 
 public class TerrainManager : MonoBehaviour
 {
     internal const int MaxSketchSize = 512;
+    private const float MinVoxelSize = 0.01f;
+    private const float NoiseRebuildDelaySeconds = 0.25f;
 
     public Dictionary<WorldPosition, Chunk> chunks = new Dictionary<WorldPosition, Chunk>();
     public GameObject chunkPrefab;
     public ReadImage readImg;
 
+    [SerializeField, FormerlySerializedAs("scale"), Min(MinVoxelSize)]
+    [Tooltip("Width, height and depth of one voxel in Unity units. Use a smaller sketch to reduce the number of voxels.")]
+    private float voxelSize = 1f;
     [SerializeField, Min(1f)] private float buildBudgetMilliseconds = 8f;
+    [SerializeField, Tooltip("Edit a biome in Play Mode to rebuild the current sketch with its new noise settings.")]
+    private BiomeNoiseProfiles biomeNoise = BiomeNoiseProfiles.Default;
 
     internal bool IsBuilding => buildRoutine != null;
     internal int CompletedBuildSteps { get; private set; }
     internal int TotalBuildSteps { get; private set; }
+    internal int BuildVersion { get; private set; }
+    internal float VoxelSize { get; private set; } = 1f;
 
     private Coroutine buildRoutine;
-    
-    [HideInInspector]
-    public float scale = 1f;
+    private Transform chunkRoot;
+    private int sketchWidth;
+    private BiomeNoiseProfiles buildNoise;
+    private volatile bool settingsNeedCheck;
+    private float noiseRebuildAt = float.PositiveInfinity;
+
+    private void Awake()
+    {
+        chunkRoot = new GameObject("Terrain Chunks").transform;
+        chunkRoot.SetParent(transform, false);
+        ApplyVoxelSize();
+    }
 
     private void Start()
     {
         readImg.DisplayImage();
     }
 
+    private void OnValidate()
+    {
+        // Unity can invoke validation off the main thread.
+        settingsNeedCheck = true;
+    }
+
+    private void Update()
+    {
+        if (settingsNeedCheck)
+        {
+            settingsNeedCheck = false;
+            ApplyVoxelSize();
+            noiseRebuildAt = biomeNoise.Equals(buildNoise)
+                ? float.PositiveInfinity
+                : Time.unscaledTime + NoiseRebuildDelaySeconds;
+        }
+
+        if (!IsBuilding && TotalBuildSteps > 0 && Time.unscaledTime >= noiseRebuildAt)
+            BeginBuild();
+    }
+
+    private void ApplyVoxelSize()
+    {
+        float size = float.IsNaN(voxelSize) || float.IsInfinity(voxelSize)
+            ? 1f
+            : Mathf.Max(MinVoxelSize, voxelSize);
+        if (VoxelSize == size)
+            return;
+
+        VoxelSize = size;
+        chunkRoot.localScale = Vector3.one * size;
+    }
+
     public void CreateChunk(int x, int y, int z)
     {
-        CreateChunk(x, y, z, new TerrainGeneration(readImg));
+        CreateChunk(x, y, z, new TerrainGeneration(readImg, biomeNoise));
     }
 
     private Chunk CreateChunk(int x, int y, int z, TerrainGeneration terrainGeneration)
     {
         WorldPosition worldPos = new WorldPosition(x, y, z);
 
-        //Instantiate the chunk at the coordinates using the chunk prefab
-        GameObject newChunkObject = Instantiate(chunkPrefab, new Vector3(x, y, z), Quaternion.Euler(Vector3.zero)) as GameObject;
+        GameObject newChunkObject = Instantiate(chunkPrefab, chunkRoot, false);
+        newChunkObject.transform.SetLocalPositionAndRotation(new Vector3(x, y, z), Quaternion.identity);
 
         Chunk newChunk = newChunkObject.GetComponent<Chunk>();
 
@@ -83,19 +135,28 @@ public class TerrainManager : MonoBehaviour
             return;
         }
 
+        sketchWidth = width;
+        BeginBuild();
+    }
+
+    private void BeginBuild()
+    {
         int chunkSize = Chunk.chunkSize;
-        int minCoordinate = -(width / 2);
+        int minCoordinate = -(sketchWidth / 2);
         int minChunk = GetChunkOrigin(minCoordinate);
-        int maxChunk = GetChunkOrigin(minCoordinate + width - 1);
-        int topChunk = width <= 64 ? chunkSize : 3 * chunkSize;
+        int maxChunk = GetChunkOrigin(minCoordinate + sketchWidth - 1);
+        int topChunk = sketchWidth <= 64 ? chunkSize : 3 * chunkSize;
         int chunksPerSide = (maxChunk - minChunk) / chunkSize + 1;
         int chunkCount = chunksPerSide * chunksPerSide * (topChunk / chunkSize + 2);
         TotalBuildSteps = chunkCount * 2;
         CompletedBuildSteps = 0;
-        buildRoutine = StartCoroutine(BuildTerrain(minChunk, maxChunk, topChunk, chunkSize, chunkCount));
+        noiseRebuildAt = float.PositiveInfinity;
+        buildNoise = biomeNoise;
+        var terrainGeneration = new TerrainGeneration(readImg, buildNoise);
+        buildRoutine = StartCoroutine(BuildTerrain(minChunk, maxChunk, topChunk, chunkSize, chunkCount, terrainGeneration));
     }
 
-    private IEnumerator BuildTerrain(int minChunk, int maxChunk, int topChunk, int chunkSize, int chunkCount)
+    private IEnumerator BuildTerrain(int minChunk, int maxChunk, int topChunk, int chunkSize, int chunkCount, TerrainGeneration terrainGeneration)
     {
         bool finished = false;
         try
@@ -104,7 +165,6 @@ public class TerrainManager : MonoBehaviour
             yield return null;
 
             var generatedChunks = new List<Chunk>(chunkCount);
-            var terrainGeneration = new TerrainGeneration(readImg);
             var frameWork = Stopwatch.StartNew();
             for (int x = minChunk; x <= maxChunk; x += chunkSize)
             {
@@ -112,7 +172,15 @@ public class TerrainManager : MonoBehaviour
                 {
                     for (int z = minChunk; z <= maxChunk; z += chunkSize)
                     {
-                        Chunk chunk = CreateChunk(x, y, z, terrainGeneration);
+                        if (chunks.TryGetValue(new WorldPosition(x, y, z), out Chunk chunk))
+                        {
+                            System.Array.Clear(chunk.blocks, 0, chunk.blocks.Length);
+                            terrainGeneration.ChunkGeneration(chunk);
+                        }
+                        else
+                        {
+                            chunk = CreateChunk(x, y, z, terrainGeneration);
+                        }
                         chunk.enabled = false;
                         generatedChunks.Add(chunk);
                         CompletedBuildSteps++;
@@ -142,6 +210,7 @@ public class TerrainManager : MonoBehaviour
                 }
             }
 
+            BuildVersion++;
             finished = true;
         }
         finally
@@ -165,7 +234,10 @@ public class TerrainManager : MonoBehaviour
     private void DiscardPartialTerrain()
     {
         foreach (Chunk chunk in chunks.Values)
-            Destroy(chunk.gameObject);
+        {
+            if (chunk != null)
+                Destroy(chunk.gameObject);
+        }
 
         chunks.Clear();
         CompletedBuildSteps = 0;

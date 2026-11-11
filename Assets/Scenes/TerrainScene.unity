@@ -244,7 +244,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 363e31235c3743bebc3ef3f2440e83e1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TerrainBuildProgress
   terrain: {fileID: 1331530268}
   panel: {fileID: 841996989}
@@ -260,7 +260,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
@@ -396,7 +396,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.85882354, g: 0.85882354, b: 0.8156863, a: 1}
@@ -572,7 +572,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 0.11764706, g: 0.11372549, b: 0.101960786, a: 1}
@@ -816,7 +816,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.20784314, g: 0.19607843, b: 0.18431373, a: 1}
@@ -891,7 +891,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.2627451, g: 0.40392157, b: 0.34117648, a: 1}
@@ -1043,8 +1043,112 @@ MonoBehaviour:
   chunkPrefab: {fileID: 2092602343790702732, guid: 27ca37799ca4f0c4d9e0cc74525e4824,
     type: 3}
   readImg: {fileID: 865928}
+  voxelSize: 0.1
   buildBudgetMilliseconds: 8
-  scale: 1
+  biomeNoise:
+    water:
+      baseElevation: -30
+      minimumElevation: -15
+      hillFrequency: 0.000000001
+      hillHeightRange: 4
+      detailFrequency: 0
+      detailHeightRange: 4
+      surfaceThickness: 3
+      surfaceFrequency: 0.0001
+      surfaceHeightRange: 2
+    temperateForest:
+      height:
+        baseElevation: -28
+        minimumElevation: -12
+        hillFrequency: 0.0008
+        hillHeightRange: 20
+        detailFrequency: 0.05
+        detailHeightRange: 4
+        surfaceThickness: 3
+        surfaceFrequency: 0.04
+        surfaceHeightRange: 3
+      caveFrequency: 0.025
+      caveCutoff: 7
+    alpineTundra:
+      height:
+        baseElevation: -24
+        minimumElevation: -8
+        hillFrequency: 0.048
+        hillHeightRange: 48
+        detailFrequency: 0.05
+        detailHeightRange: 4
+        surfaceThickness: 1
+        surfaceFrequency: 0.04
+        surfaceHeightRange: 3
+      caveFrequency: 0.055
+      caveCutoff: 20
+      snowline: 20
+    hotDesert:
+      height:
+        baseElevation: -28
+        minimumElevation: -12
+        hillFrequency: 0.0008
+        hillHeightRange: 20
+        detailFrequency: 0.05
+        detailHeightRange: 4
+        surfaceThickness: 3
+        surfaceFrequency: 0.04
+        surfaceHeightRange: 3
+      caveFrequency: 0.025
+      caveCutoff: 7
+    taiga:
+      height:
+        baseElevation: -24
+        minimumElevation: -8
+        hillFrequency: 0.048
+        hillHeightRange: 48
+        detailFrequency: 0.05
+        detailHeightRange: 4
+        surfaceThickness: 1
+        surfaceFrequency: 0.04
+        surfaceHeightRange: 3
+      caveFrequency: 0.055
+      caveCutoff: 20
+      snowline: 20
+    coldDesert:
+      height:
+        baseElevation: -28
+        minimumElevation: -12
+        hillFrequency: 0.0008
+        hillHeightRange: 20
+        detailFrequency: 0.05
+        detailHeightRange: 4
+        surfaceThickness: 3
+        surfaceFrequency: 0.04
+        surfaceHeightRange: 3
+      caveFrequency: 0.025
+      caveCutoff: 7
+    tropicalForest:
+      height:
+        baseElevation: -28
+        minimumElevation: -12
+        hillFrequency: 0.0008
+        hillHeightRange: 20
+        detailFrequency: 0.05
+        detailHeightRange: 4
+        surfaceThickness: 3
+        surfaceFrequency: 0.04
+        surfaceHeightRange: 3
+      caveFrequency: 0.025
+      caveCutoff: 7
+    savannah:
+      height:
+        baseElevation: -28
+        minimumElevation: -12
+        hillFrequency: 0.0008
+        hillHeightRange: 20
+        detailFrequency: 0.05
+        detailHeightRange: 4
+        surfaceThickness: 3
+        surfaceFrequency: 0.04
+        surfaceHeightRange: 3
+      caveFrequency: 0.025
+      caveCutoff: 7
 --- !u!4 &1331530269
 Transform:
   m_ObjectHideFlags: 0
@@ -1212,7 +1316,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
   m_Material: {fileID: 0}
   m_Color: {r: 0.11764706, g: 0.11372549, b: 0.101960786, a: 1}
@@ -1365,7 +1469,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.9843137, g: 0.9764706, b: 0.95686275, a: 1}

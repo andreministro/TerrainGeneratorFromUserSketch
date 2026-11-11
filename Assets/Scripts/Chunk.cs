@@ -100,11 +100,13 @@ public class Chunk : MonoBehaviour
         renderMesh.RecalculateNormals();
 
         coll.sharedMesh = null;
+        if (colliderMesh != null)
+            colliderMesh.Clear();
+        if (meshData.colTriangles.Count == 0)
+            return;
+
         if (colliderMesh == null)
             colliderMesh = new Mesh();
-        else
-            colliderMesh.Clear();
-
         colliderMesh.vertices = meshData.colVertices.ToArray();
         colliderMesh.triangles = meshData.colTriangles.ToArray();
         colliderMesh.RecalculateNormals();

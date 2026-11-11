@@ -12,9 +12,22 @@ public class CameraController : MonoBehaviour
 
     [SerializeField] private TerrainManager terrain;
     private float framedAspect;
+    private int framedBuildVersion;
+    private float framedVoxelSize;
+    private float viewVoxelSize = 1f;
+    private float overviewFarClip;
+    private float flyFarClip;
+    private float playerFarClip;
+    private Camera playerCamera;
+    private CharacterController playerController;
 
     void Start()
     {
+        playerCamera = Player.GetComponentInChildren<Camera>(true);
+        playerController = Player.GetComponent<CharacterController>();
+        overviewFarClip = orthoCam.farClipPlane;
+        flyFarClip = FPSCam.farClipPlane;
+        playerFarClip = playerCamera.farClipPlane;
         orthoCam.enabled = true;
         FPSCam.enabled = false;
         Player.SetActive(false);
@@ -78,8 +91,31 @@ public class CameraController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!terrain.IsBuilding && orthoCam.enabled && framedAspect != orthoCam.aspect)
+        if (viewVoxelSize != terrain.VoxelSize)
+            ResizeViews();
+
+        if (!terrain.IsBuilding && orthoCam.enabled
+            && (framedAspect != orthoCam.aspect || framedBuildVersion != terrain.BuildVersion
+                || framedVoxelSize != terrain.VoxelSize))
             ChangeSettingsOrtho();
+    }
+
+    private void ResizeViews()
+    {
+        float ratio = terrain.VoxelSize / viewVoxelSize;
+        Vector3 origin = terrain.transform.position;
+        FPSCam.transform.position = origin + (FPSCam.transform.position - origin) * ratio;
+
+        // Keep the player's feet at the corresponding point on the scaled terrain.
+        Vector3 playerCenterToFeet = Player.transform.TransformVector(
+            playerController.center - Vector3.up * (playerController.height * 0.5f));
+        Vector3 feet = Player.transform.position + playerCenterToFeet;
+        Player.transform.position = origin + (feet - origin) * ratio - playerCenterToFeet;
+
+        viewVoxelSize = terrain.VoxelSize;
+        float clipScale = Mathf.Max(1f, viewVoxelSize);
+        FPSCam.farClipPlane = flyFarClip * clipScale;
+        playerCamera.farClipPlane = playerFarClip * clipScale;
     }
 
     public void ChangeSettingsOrtho()
@@ -104,6 +140,9 @@ public class CameraController : MonoBehaviour
             }
         }
 
+        framedAspect = orthoCam.aspect;
+        framedBuildVersion = terrain.BuildVersion;
+        framedVoxelSize = terrain.VoxelSize;
         if (!hasTerrain)
             return;
 
@@ -114,7 +153,7 @@ public class CameraController : MonoBehaviour
         Vector3 position = bounds.center - view.forward * (halfDepth + 10f);
         cameraTarget.transform.position += position - view.position;
         orthoCam.orthographicSize = Mathf.Max(halfHeight, halfWidth / orthoCam.aspect) * 1.1f + 0.5f;
-        framedAspect = orthoCam.aspect;
+        orthoCam.farClipPlane = Mathf.Max(overviewFarClip, 2f * halfDepth + 20f);
     }
 
     private static float ProjectExtent(Vector3 extents, Vector3 axis)
@@ -124,7 +163,7 @@ public class CameraController : MonoBehaviour
 
     public void ChangeSettingsFPS()
     {
-        FPSCam.transform.position = new Vector3(0f, 10f, 0f);
+        FPSCam.transform.position = terrain.transform.position + Vector3.up * (10f * viewVoxelSize);
     }
 
 }

@@ -7,22 +7,22 @@ using SimplexNoise;
 public class TerrainGeneration
 {
     private readonly ReadImage sketch;
+    private readonly BiomeNoiseProfiles noise;
     private readonly float noiseOffsetX;
     private readonly float noiseOffsetZ;
 
-    public TerrainGeneration(ReadImage sketch)
+    public TerrainGeneration(ReadImage sketch) : this(sketch, BiomeNoiseProfiles.Default)
+    {
+    }
+
+    internal TerrainGeneration(ReadImage sketch, BiomeNoiseProfiles noise)
     {
         this.sketch = sketch;
+        this.noise = noise;
         var random = new System.Random(sketch.seed);
         noiseOffsetX = random.Next(-100000, 100000);
         noiseOffsetZ = random.Next(-100000, 100000);
     }
-
-    float mountainCaveFrequency = 0.055f;
-    int mountainCaveSize = 20;
-
-    float normalCaveFrequency = 0.025f;
-    int normalCaveSize = 7;
 
     float TforestTreeFrequency = 0.6f;
     int TforestTreeDensity = 4;
@@ -126,31 +126,8 @@ public class TerrainGeneration
     //WATER 
     public Chunk ChunkColumnGenBlue(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -30; //Base stone layer height
-        float stoneBaseNoise = 0; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 4;
-        float stoneMountainFrequency = 0.000000001f;
-        float stoneMinHeight = -15; //Lowest stone is allowed to go
-
-        //Water Variables
-        float waterBaseHeight = 3; // minimum depth on top of the stone 
-        float waterNoise = 0.0001f; // little more messy then stoneBaseNoise
-        float waterNoiseHeight = 2;
-
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int waterHeight = stoneHeight + Mathf.FloorToInt(waterBaseHeight);
-        waterHeight += GetNoise(x, 100, z, waterNoise, Mathf.FloorToInt(waterNoiseHeight));
+        int stoneHeight = GetStoneHeight(x, z, noise.water);
+        int waterHeight = GetSurfaceHeight(x, z, stoneHeight, noise.water);
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
@@ -174,41 +151,19 @@ public class TerrainGeneration
     //TEMPERATE FOREST 
     public Chunk ChunkColumnGenGreen(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -28; //Base stone layer height
-        float stoneBaseNoise = 0.05f; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 20;
-        float stoneMountainFrequency = 0.0008f;
-        float stoneMinHeight = -12; //Lowest stone is allowed to go
-
-        //Dirt Variables
-        float dirtBaseHeight = 3; // minimum depth on top of the stone 
-        float dirtNoise = 0.04f; // little more messy then stoneBaseNoise
-        float dirtNoiseHeight = 3;
-
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int dirtHeight = stoneHeight + Mathf.FloorToInt(dirtBaseHeight);
-        dirtHeight += GetNoise(x, 100, z, dirtNoise, Mathf.FloorToInt(dirtNoiseHeight));
+        LandBiomeNoise profile = noise.temperateForest;
+        int stoneHeight = GetStoneHeight(x, z, profile.height);
+        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, normalCaveFrequency, 100);
+            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
 
-            if (y <= stoneHeight && normalCaveSize < caveChance )
+            if (y <= stoneHeight && profile.caveCutoff < caveChance )
             {
                 SetBlock(x, y, z, new Block(), chunk);
             }
-            else if (y <= dirtHeight && normalCaveSize < caveChance)
+            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new BlockGrassNormal(), chunk);
 
@@ -242,57 +197,26 @@ public class TerrainGeneration
     //ALPINE TUNDRA
     public Chunk ChunkColumnGenMagenta(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -24; //Base stone layer height
-        float stoneBaseNoise = 0.05f; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 48;
-        float stoneMountainFrequency = 0.048f;
-        float stoneMinHeight = -8; //Lowest stone is allowed to go
-
-        //Dirt Variables
-        float dirtBaseHeight = 1; // minimum depth on top of the stone 
-        float dirtNoise = 0.04f; // little more messy then stoneBaseNoise
-        float dirtNoiseHeight = 3;
-
-        //Snow Variables
-        float snowBaseHeight = 3;
-        float snowNoise = 0.03f;
-        float snowNoiseHeight = 1;
-
-
-        // Stone height
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int dirtHeight = stoneHeight + Mathf.FloorToInt(dirtBaseHeight);
-        dirtHeight += GetNoise(x, 100, z, dirtNoise, Mathf.FloorToInt(dirtNoiseHeight));
-
-        int snowHeight = dirtHeight + Mathf.FloorToInt(snowBaseHeight);
-        snowHeight += GetNoise(x, 100, z, snowNoise, Mathf.FloorToInt(snowNoiseHeight));
+        MountainBiomeNoise profile = noise.alpineTundra;
+        int stoneHeight = GetStoneHeight(x, z, profile.height);
+        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
 
         float snowFrequency = 0.9f;
         int snowDensity = 100;
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, mountainCaveFrequency, 100);
-            if (y <= stoneHeight && mountainCaveSize < caveChance)
+            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
+            if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new Block(), chunk);
             }
-            else if (y <= dirtHeight && mountainCaveSize < caveChance)
+            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new BlockDirtGrass(), chunk);
 
-                if (y == dirtHeight && y >= 20 && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && mountainCaveSize < caveChance)
+                if (y == dirtHeight && y >= profile.snowline
+                    && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && profile.caveCutoff < caveChance)
                 {
                     SetBlock(x, y + 1, z, new BlockSnow(), chunk);
                 }
@@ -309,41 +233,19 @@ public class TerrainGeneration
     //HOT DESERT
     public Chunk ChunkColumnGenYellow(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -28; //Base stone layer height
-        float stoneBaseNoise = 0.05f; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 20; //38
-        float stoneMountainFrequency = 0.0008f;
-        float stoneMinHeight = -12; //Lowest stone is allowed to go
-
-        //Sand Variables
-        float sandBaseHeight = 3; // minimum depth on top of the stone 
-        float sandNoise = 0.04f; // little more messy then stoneBaseNoise
-        float sandNoiseHeight = 3;
-
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int sandHeight = stoneHeight + Mathf.FloorToInt(sandBaseHeight);
-        sandHeight += GetNoise(x, 100, z, sandNoise, Mathf.FloorToInt(sandNoiseHeight));
+        LandBiomeNoise profile = noise.hotDesert;
+        int stoneHeight = GetStoneHeight(x, z, profile.height);
+        int sandHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
 
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, normalCaveFrequency, 100);
-            if (y <= stoneHeight && normalCaveSize < caveChance)
+            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
+            if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new Block(), chunk);
             }
-            else if (y <= sandHeight && normalCaveSize < caveChance)
+            else if (y <= sandHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new BlockSand(), chunk, true);
 
@@ -369,41 +271,19 @@ public class TerrainGeneration
     //COLD DESERT
     public Chunk ChunkColumnGenWhite(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -28; //Base stone layer height
-        float stoneBaseNoise = 0.05f; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 20; //38
-        float stoneMountainFrequency = 0.0008f;
-        float stoneMinHeight = -12; //Lowest stone is allowed to go
-
-        //Sand Variables
-        float snowBaseHeight = 3; // minimum depth on top of the stone 
-        float snowNoise = 0.04f; // little more messy then stoneBaseNoise
-        float snowNoiseHeight = 3;
-
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int snowHeight = stoneHeight + Mathf.FloorToInt(snowBaseHeight);
-        snowHeight += GetNoise(x, 100, z, snowNoise, Mathf.FloorToInt(snowNoiseHeight));
+        LandBiomeNoise profile = noise.coldDesert;
+        int stoneHeight = GetStoneHeight(x, z, profile.height);
+        int snowHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
 
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, normalCaveFrequency, 100);
-            if (y <= stoneHeight && normalCaveSize < caveChance)
+            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
+            if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new Block(), chunk);
             }
-            else if (y <= snowHeight && normalCaveSize < caveChance)
+            else if (y <= snowHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new BlockSnow(), chunk);
 
@@ -423,57 +303,26 @@ public class TerrainGeneration
     //TAIGA
     public Chunk ChunkColumnGenBlack(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -24; //Base stone layer height
-        float stoneBaseNoise = 0.05f; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 48;
-        float stoneMountainFrequency = 0.048f;
-        float stoneMinHeight = -8; //Lowest stone is allowed to go
-
-        //Dirt Variables
-        float dirtBaseHeight = 1; // minimum depth on top of the stone 
-        float dirtNoise = 0.04f; // little more messy then stoneBaseNoise
-        float dirtNoiseHeight = 3;
-
-        //Snow Variables
-        float snowBaseHeight = 3;
-        float snowNoise = 0.03f;
-        float snowNoiseHeight = 1;
-
-
-        // Stone height
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int dirtHeight = stoneHeight + Mathf.FloorToInt(dirtBaseHeight);
-        dirtHeight += GetNoise(x, 100, z, dirtNoise, Mathf.FloorToInt(dirtNoiseHeight));
-
-        int snowHeight = dirtHeight + Mathf.FloorToInt(snowBaseHeight);
-        snowHeight += GetNoise(x, 100, z, snowNoise, Mathf.FloorToInt(snowNoiseHeight));
+        MountainBiomeNoise profile = noise.taiga;
+        int stoneHeight = GetStoneHeight(x, z, profile.height);
+        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
 
         float snowFrequency = 0.9f;
         int snowDensity = 100;
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, mountainCaveFrequency, 100);
-            if (y <= stoneHeight && mountainCaveSize < caveChance)
+            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
+            if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new Block(), chunk);
             }
-            else if (y <= dirtHeight && mountainCaveSize < caveChance)
+            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new BlockGrassDark(), chunk);
 
-                if (y == dirtHeight && y >= 20 && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && mountainCaveSize < caveChance)
+                if (y == dirtHeight && y >= profile.snowline
+                    && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && profile.caveCutoff < caveChance)
                 {
                     SetBlock(x, y + 1, z, new BlockSnow(), chunk);
                 }
@@ -493,44 +342,22 @@ public class TerrainGeneration
     //TROPICAL FOREST
     public Chunk ChunkColumnGenCyan(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -28; //Base stone layer height
-        float stoneBaseNoise = 0.05f; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 20; //38
-        float stoneMountainFrequency = 0.0008f;
-        float stoneMinHeight = -12; //Lowest stone is allowed to go
-
-        //Dirt Variables
-        float dirtBaseHeight = 3; // minimum depth on top of the stone 
-        float dirtNoise = 0.04f; // little more messy then stoneBaseNoise
-        float dirtNoiseHeight = 3;
-
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int dirtHeight = stoneHeight + Mathf.FloorToInt(dirtBaseHeight);
-        dirtHeight += GetNoise(x, 100, z, dirtNoise, Mathf.FloorToInt(dirtNoiseHeight));
+        LandBiomeNoise profile = noise.tropicalForest;
+        int stoneHeight = GetStoneHeight(x, z, profile.height);
+        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
 
         float bushFrequency = 0.8f;
         int bushDensity = 15;
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, normalCaveFrequency, 100);
+            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
 
-            if (y <= stoneHeight && normalCaveSize < caveChance)
+            if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new Block(), chunk);
             }
-            else if (y <= dirtHeight && normalCaveSize < caveChance)
+            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new BlockGrassTropical(), chunk);
 
@@ -538,7 +365,7 @@ public class TerrainGeneration
                 {
                     CreateTropicalTree(x, y + 1, z, chunk);
                 }
-                else if(y == dirtHeight && GetNoise(x, 0, z, bushFrequency, 100) < bushDensity && normalCaveSize < caveChance)
+                else if(y == dirtHeight && GetNoise(x, 0, z, bushFrequency, 100) < bushDensity && profile.caveCutoff < caveChance)
                 {
                     CreateTropicalBush(x, y + 1, z, chunk);
                 }
@@ -555,41 +382,19 @@ public class TerrainGeneration
     //SAVANNAH
     public Chunk ChunkColumnGenRed(Chunk chunk, int x, int z)
     {
-        //Base stone layer 
-        float stoneBaseHeight = -28; //Base stone layer height
-        float stoneBaseNoise = 0.05f; //Scale of the noise to add to the base height, 0.05 --> peaks 25 blocks apart
-        float stoneBaseNoiseHeight = 4; //Height of that noise, 4 --> max diff between peak and valley is 4
-
-        //Mountain variables, Larger height and less frequency
-        float stoneMountainHeight = 20; //38
-        float stoneMountainFrequency = 0.0008f;
-        float stoneMinHeight = -12; //Lowest stone is allowed to go
-
-        //Dirt Variables
-        float dirtBaseHeight = 3; // minimum depth on top of the stone 
-        float dirtNoise = 0.04f; // little more messy then stoneBaseNoise
-        float dirtNoiseHeight = 3;
-
-        int stoneHeight = Mathf.FloorToInt(stoneBaseHeight);
-        stoneHeight += GetNoise(x, 0, z, stoneMountainFrequency, Mathf.FloorToInt(stoneMountainHeight));
-
-        if (stoneHeight < stoneMinHeight)
-            stoneHeight = Mathf.FloorToInt(stoneMinHeight); //after the mountain noise, raise everything under minimum to minmum
-
-        stoneHeight += GetNoise(x, 0, z, stoneBaseNoise, Mathf.FloorToInt(stoneBaseNoiseHeight)); // apply base noise
-
-        int dirtHeight = stoneHeight + Mathf.FloorToInt(dirtBaseHeight);
-        dirtHeight += GetNoise(x, 100, z, dirtNoise, Mathf.FloorToInt(dirtNoiseHeight));
+        LandBiomeNoise profile = noise.savannah;
+        int stoneHeight = GetStoneHeight(x, z, profile.height);
+        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, normalCaveFrequency, 100);
+            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
 
-            if (y <= stoneHeight && normalCaveSize < caveChance)
+            if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new Block(), chunk);
             }
-            else if (y <= dirtHeight && normalCaveSize < caveChance)
+            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
                 SetBlock(x, y, z, new BlockGrassDry(), chunk);
 
@@ -793,6 +598,19 @@ public class TerrainGeneration
            if (replaceBlocks || chunk.blocks[x, y, z] == null)
                 chunk.SetBlock(x, y, z, block);
         }
+    }
+
+    private int GetStoneHeight(int x, int z, in TerrainHeightNoise profile)
+    {
+        int broadHeight = profile.baseElevation + GetNoise(x, 0, z, profile.hillFrequency, profile.hillHeightRange);
+        return Mathf.Max(broadHeight, profile.minimumElevation)
+            + GetNoise(x, 0, z, profile.detailFrequency, profile.detailHeightRange);
+    }
+
+    private int GetSurfaceHeight(int x, int z, int stoneHeight, in TerrainHeightNoise profile)
+    {
+        return stoneHeight + profile.surfaceThickness
+            + GetNoise(x, 100, z, profile.surfaceFrequency, profile.surfaceHeightRange);
     }
 
     private int GetNoise(int x, int y, int z, float scale, int max)
