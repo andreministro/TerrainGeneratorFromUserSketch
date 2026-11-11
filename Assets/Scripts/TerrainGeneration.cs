@@ -6,7 +6,17 @@ using SimplexNoise;
 
 public class TerrainGeneration
 {
-    public Chunk scriptRef;
+    private readonly ReadImage sketch;
+    private readonly float noiseOffsetX;
+    private readonly float noiseOffsetZ;
+
+    public TerrainGeneration(ReadImage sketch)
+    {
+        this.sketch = sketch;
+        var random = new System.Random(sketch.seed);
+        noiseOffsetX = random.Next(-100000, 100000);
+        noiseOffsetZ = random.Next(-100000, 100000);
+    }
 
     float mountainCaveFrequency = 0.055f;
     int mountainCaveSize = 20;
@@ -50,82 +60,41 @@ public class TerrainGeneration
 
     public Chunk ChunkGeneration(Chunk chunk)
     {
-        GameObject imgReader = GameObject.Find("ImageReader");
-        ReadImage readImage = imgReader.GetComponent<ReadImage>();
+        // Include nearby columns so decorations can extend across chunk boundaries.
         for (int x = chunk.pos.x - 2; x < chunk.pos.x + Chunk.chunkSize + 2; x++)
         {
             for (int z = chunk.pos.z - 2; z < chunk.pos.z + Chunk.chunkSize + 2; z++)
             {
-                foreach (Vector2 p in readImage.bluePos) //WATER
+                switch (sketch.GetBiome(x, z))
                 {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenBlue(chunk, x, z);
-                    }
-                }
-
-                foreach (Vector2 p in readImage.yellowPos) //HOT DESERT
-                {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenYellow(chunk, x, z);
-
-                    }
-                }
-
-                foreach (Vector2 p in readImage.magentaPos) //ALPINE TUNDRA
-                {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenMagenta(chunk, x, z);
-                    }
-                } 
-
-                foreach (Vector2 p in readImage.greenPos) //TEMPERATE FOREST
-                {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenGreen(chunk, x, z);
-                    }
-                }
-
-                foreach (Vector2 p in readImage.whitePos) //COLD DESERT
-                {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenWhite(chunk, x, z);
-
-                    }
-                }
-
-                foreach (Vector2 p in readImage.blackPos) //TAIGA
-                {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenBlack(chunk, x, z);
-
-                    }
-                }
-
-                foreach (Vector2 p in readImage.cyanPos) //TROPICAL FOREST
-                {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenCyan(chunk, x, z);
-
-                    }
-                }
-
-                foreach (Vector2 p in readImage.redPos) //SAVANNAH
-                {
-                    if (p.x == x && p.y == z)
-                    {
-                        chunk = ChunkColumnGenRed(chunk, x, z);
-
-                    }
+                    case Biome.Water:
+                        ChunkColumnGenBlue(chunk, x, z);
+                        break;
+                    case Biome.HotDesert:
+                        ChunkColumnGenYellow(chunk, x, z);
+                        break;
+                    case Biome.AlpineTundra:
+                        ChunkColumnGenMagenta(chunk, x, z);
+                        break;
+                    case Biome.TemperateForest:
+                        ChunkColumnGenGreen(chunk, x, z);
+                        break;
+                    case Biome.ColdDesert:
+                        ChunkColumnGenWhite(chunk, x, z);
+                        break;
+                    case Biome.Taiga:
+                        ChunkColumnGenBlack(chunk, x, z);
+                        break;
+                    case Biome.TropicalForest:
+                        ChunkColumnGenCyan(chunk, x, z);
+                        break;
+                    case Biome.Savannah:
+                        ChunkColumnGenRed(chunk, x, z);
+                        break;
                 }
             }
         }
+
         return chunk;
     }
 
@@ -801,18 +770,9 @@ public class TerrainGeneration
         }
     }
 
-    public static int GetNoise(int x, int y, int z, float scale, int max)
+    private int GetNoise(int x, int y, int z, float scale, int max)
     {
-        GameObject imgReader = GameObject.Find("ImageReader");
-        ReadImage readImage = imgReader.GetComponent<ReadImage>();
-        int seed = readImage.seed;
-
-        System.Random prng = new System.Random(seed);
-
-        float offsetX = prng.Next(-100000, 100000);
-        float offsetY = 0;//prng.Next(-100000, 100000);
-        float offsetZ = prng.Next(-100000, 100000);
-
-        return Mathf.FloorToInt((Noise.Generate(x * scale + offsetX, y * scale + offsetY, z * scale + offsetZ) + 1f) * (max / 2f));
+        float value = Noise.Generate(x * scale + noiseOffsetX, y * scale, z * scale + noiseOffsetZ);
+        return Mathf.FloorToInt((value + 1f) * (max / 2f));
     }
 }

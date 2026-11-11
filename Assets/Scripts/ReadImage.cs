@@ -1,6 +1,17 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+
+internal enum Biome : byte
+{
+    None,
+    Water,
+    HotDesert,
+    AlpineTundra,
+    TemperateForest,
+    ColdDesert,
+    Taiga,
+    TropicalForest,
+    Savannah
+}
 
 public class ReadImage : MonoBehaviour
 {
@@ -10,22 +21,7 @@ public class ReadImage : MonoBehaviour
     public TerrainManager world;
     public int seed;
 
-    [HideInInspector]
-    public List<Vector2> bluePos = new List<Vector2>();
-    [HideInInspector]
-    public List<Vector2> yellowPos = new List<Vector2>();
-    [HideInInspector]
-    public List<Vector2> magentaPos = new List<Vector2>();
-    [HideInInspector]
-    public List<Vector2> greenPos = new List<Vector2>();
-    [HideInInspector]
-    public List<Vector2> whitePos = new List<Vector2>();
-    [HideInInspector]
-    public List<Vector2> redPos = new List<Vector2>();
-    [HideInInspector]
-    public List<Vector2> cyanPos = new List<Vector2>();
-    [HideInInspector]
-    public List<Vector2> blackPos = new List<Vector2>();
+    private Biome[] biomes;
 
     public int mapWidth;
     public int mapHeight;
@@ -64,67 +60,42 @@ public class ReadImage : MonoBehaviour
         mapWidth = image.width;
         mapHeight = image.height;
 
-        //Verify positions for each pixel
-        Vector2[] spawnPositions = new Vector2[colorMapSketch.Length];
-        Vector2 startSpawnPos = new Vector2(-Mathf.Round(mapWidth / 2), -Mathf.Round(mapHeight / 2));
-        Vector2 currentSpawnPos = startSpawnPos;
+        biomes = new Biome[colorMapSketch.Length];
+        for (int i = 0; i < colorMapSketch.Length; i++)
+            biomes[i] = DecodeBiome(colorMapSketch[i]);
 
-        int counter = 0;
-
-        for (int y = 0; y < mapHeight; y++)
-        {
-            for (int x = 0; x < mapWidth; x++)
-            {
-                spawnPositions[counter] = currentSpawnPos;
-                counter++;
-                currentSpawnPos.x++;
-            }
-
-            currentSpawnPos.x = startSpawnPos.x;
-            currentSpawnPos.y++;
-        }
-   
-        int counterC = 0;
-
-        //save positions for each pixel
-        foreach (Vector2 pos in spawnPositions)
-        {   
-            Color c = colorMapSketch[counterC];
-            if (c.Equals(Color.blue))
-            {
-                bluePos.Add(pos);
-            }
-            else if (c.Equals(coloryellow))
-            {
-                yellowPos.Add(pos);
-            }
-            else if (c.Equals(Color.magenta))
-            {
-                magentaPos.Add(pos);
-            }
-            else if (c.Equals(Color.green))
-            {
-                greenPos.Add(pos);
-            }
-            else if (c.Equals(Color.white))
-            {
-                whitePos.Add(pos);
-            }
-            else if (c.Equals(Color.black))
-            {
-                blackPos.Add(pos);
-            }
-            else if (c.Equals(Color.red))
-            {
-                redPos.Add(pos);
-            }
-            else if (c.Equals(Color.cyan))
-            {
-                cyanPos.Add(pos);
-            }
-            counterC++;
-        }
         world.CreateFromSketch(mapWidth, mapHeight);
     }
 
+    internal Biome GetBiome(int worldX, int worldZ)
+    {
+        int x = worldX + mapWidth / 2;
+        int z = worldZ + mapHeight / 2;
+        if (biomes == null || (uint)x >= (uint)mapWidth || (uint)z >= (uint)mapHeight)
+            return Biome.None;
+
+        return biomes[z * mapWidth + x];
+    }
+
+    private static Biome DecodeBiome(Color color)
+    {
+        if (color.Equals(Color.blue))
+            return Biome.Water;
+        if (color.Equals(coloryellow))
+            return Biome.HotDesert;
+        if (color.Equals(Color.magenta))
+            return Biome.AlpineTundra;
+        if (color.Equals(Color.green))
+            return Biome.TemperateForest;
+        if (color.Equals(Color.white))
+            return Biome.ColdDesert;
+        if (color.Equals(Color.black))
+            return Biome.Taiga;
+        if (color.Equals(Color.red))
+            return Biome.Savannah;
+        if (color.Equals(Color.cyan))
+            return Biome.TropicalForest;
+
+        return Biome.None;
+    }
 }

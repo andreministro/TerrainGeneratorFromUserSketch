@@ -24,6 +24,11 @@ public class TerrainManager : MonoBehaviour
 
     public void CreateChunk(int x, int y, int z)
     {
+        CreateChunk(x, y, z, new TerrainGeneration(readImg));
+    }
+
+    private void CreateChunk(int x, int y, int z, TerrainGeneration terrainGeneration)
+    {
         WorldPosition worldPos = new WorldPosition(x, y, z);
 
         //Instantiate the chunk at the coordinates using the chunk prefab
@@ -37,8 +42,7 @@ public class TerrainManager : MonoBehaviour
         //Add it to the chunks dictionary with the position as the key
         chunks.Add(worldPos, newChunk);
 
-        var terrainGen = new TerrainGeneration();
-        newChunk = terrainGen.ChunkGeneration(newChunk);
+        terrainGeneration.ChunkGeneration(newChunk);
     }
     
 
@@ -62,6 +66,8 @@ public class TerrainManager : MonoBehaviour
         {
             if (isPowerOfTwo(width) && isPowerOfTwo(height))
             {
+                var terrainGeneration = new TerrainGeneration(readImg);
+
                 if (width == 32 && height == 32)
                 {
                     for (int x = -1; x < 1; x++)
@@ -70,7 +76,7 @@ public class TerrainManager : MonoBehaviour
                         {
                             for (int z = -1; z < 1; z++)
                             {
-                                CreateChunk(x * 16, y * 16, z * 16);
+                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
                             }
                         }
                     }
@@ -83,7 +89,7 @@ public class TerrainManager : MonoBehaviour
                         {
                             for (int z = -2; z < 2; z++)
                             {
-                                CreateChunk(x * 16, y * 16, z * 16);
+                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
                             }
                         }
                     }
@@ -96,7 +102,7 @@ public class TerrainManager : MonoBehaviour
                         {
                             for (int z = -4; z < 4; z++)
                             {
-                                CreateChunk(x * 16, y * 16, z * 16);
+                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
                             }
                         }
                     }
@@ -109,7 +115,7 @@ public class TerrainManager : MonoBehaviour
                         {
                             for (int z = -8; z < 8; z++)
                             {
-                                CreateChunk(x * 16, y * 16, z * 16);
+                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
                             }
                         }
                     }
@@ -122,7 +128,7 @@ public class TerrainManager : MonoBehaviour
                         {
                             for (int z = -16; z < 16; z++)
                             {
-                                CreateChunk(x * 16, y * 16, z * 16);
+                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
                             }
                         }
                     }
@@ -135,7 +141,7 @@ public class TerrainManager : MonoBehaviour
                         {
                             for (int z = -32; z < 32; z++)
                             {
-                                CreateChunk(x * 16, y * 16, z * 16);
+                                CreateChunk(x * 16, y * 16, z * 16, terrainGeneration);
                             }
                         }
                     }
