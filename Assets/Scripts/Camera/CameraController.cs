@@ -23,6 +23,9 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (terrain.IsBuilding)
+            return;
+
         if (Input.GetKeyDown(KeyCode.K))
         {
             orthoCam.enabled = false;
@@ -61,7 +64,7 @@ public class CameraController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (orthoCam.enabled && framedAspect != orthoCam.aspect)
+        if (!terrain.IsBuilding && orthoCam.enabled && framedAspect != orthoCam.aspect)
             ChangeSettingsOrtho();
     }
 

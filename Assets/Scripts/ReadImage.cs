@@ -29,6 +29,9 @@ public class ReadImage : MonoBehaviour
 
     public void DisplayImage()
     {
+        if (world.IsBuilding || world.chunks.Count != 0)
+            return;
+
         if (queuedSketch.HasValue)
         {
             var (png, queuedSeed) = queuedSketch.Value;

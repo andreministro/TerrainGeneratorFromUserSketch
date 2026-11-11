@@ -1,6 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections.Generic;
-using System.Collections;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
@@ -17,22 +15,25 @@ public class Chunk : MonoBehaviour
 
     MeshFilter filter;
     MeshCollider coll;
+    private Mesh renderMesh;
+    private Mesh colliderMesh;
 
-
-    void Start()
+    private void Awake()
     {
         filter = gameObject.GetComponent<MeshFilter>();
         coll = gameObject.GetComponent<MeshCollider>();
     }
 
-    //Update is called once per frame
-    void Update()
+    private void Update()
     {
         if (update)
-        {
-            update = false;
-            UpdateChunk();
-        }
+            RebuildMesh();
+    }
+
+    internal void RebuildMesh()
+    {
+        update = false;
+        UpdateChunk();
     }
 
     public void SetBlock(int x, int y, int z, Block block)
@@ -89,19 +90,32 @@ public class Chunk : MonoBehaviour
     //to the mesh and collision components
     void RenderMesh(MeshData meshData)
     {
-        filter.mesh.Clear();
-        filter.mesh.vertices = meshData.vertices.ToArray();
-        filter.mesh.triangles = meshData.triangles.ToArray();
+        if (renderMesh == null)
+            renderMesh = filter.mesh;
 
-        filter.mesh.uv = meshData.uv.ToArray();
-        filter.mesh.RecalculateNormals();
+        renderMesh.Clear();
+        renderMesh.vertices = meshData.vertices.ToArray();
+        renderMesh.triangles = meshData.triangles.ToArray();
+        renderMesh.uv = meshData.uv.ToArray();
+        renderMesh.RecalculateNormals();
 
         coll.sharedMesh = null;
-        Mesh mesh = new Mesh();
-        mesh.vertices = meshData.colVertices.ToArray();
-        mesh.triangles = meshData.colTriangles.ToArray();
-        mesh.RecalculateNormals();
+        if (colliderMesh == null)
+            colliderMesh = new Mesh();
+        else
+            colliderMesh.Clear();
 
-        coll.sharedMesh = mesh;
+        colliderMesh.vertices = meshData.colVertices.ToArray();
+        colliderMesh.triangles = meshData.colTriangles.ToArray();
+        colliderMesh.RecalculateNormals();
+        coll.sharedMesh = colliderMesh;
+    }
+
+    private void OnDestroy()
+    {
+        if (renderMesh != null)
+            Destroy(renderMesh);
+        if (colliderMesh != null)
+            Destroy(colliderMesh);
     }
 }
