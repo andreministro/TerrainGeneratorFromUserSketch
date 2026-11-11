@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class CameraController : MonoBehaviour
 {
@@ -23,43 +24,56 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            StartNewSketch();
+            return;
+        }
+
         if (terrain.IsBuilding)
             return;
 
         if (Input.GetKeyDown(KeyCode.K))
         {
-            orthoCam.enabled = false;
-            FPSCam.enabled = true;
-
-            if(FPSCam.enabled == true)
-            {
-                ChangeSettingsFPS();
-            }
+            ToggleFlyCamera();
         }
-
-        if (Input.GetKeyDown(KeyCode.L))
+        else if (Input.GetKeyDown(KeyCode.L))
         {
             orthoCam.enabled = false;
             FPSCam.enabled = false;
             Player.SetActive(true);
         }
-
-        if(Input.GetKeyDown(KeyCode.O))
+        else if (Input.GetKeyDown(KeyCode.O))
         {
-            orthoCam.enabled = true;
-            FPSCam.enabled = false;
+            ShowOverview();
+        }
+    }
 
-            if (orthoCam.enabled == true)
-            {
-                ChangeSettingsOrtho();
-            }
+    private void ToggleFlyCamera()
+    {
+        if (FPSCam.enabled)
+        {
+            ShowOverview();
+            return;
         }
 
+        orthoCam.enabled = false;
+        Player.SetActive(false);
+        FPSCam.enabled = true;
+        ChangeSettingsFPS();
+    }
 
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            ScreenCapture.CaptureScreenshot("Screenshot.png", 1);
-        }
+    private void ShowOverview()
+    {
+        FPSCam.enabled = false;
+        Player.SetActive(false);
+        orthoCam.enabled = true;
+        ChangeSettingsOrtho();
+    }
+
+    private void StartNewSketch()
+    {
+        SceneManager.LoadScene("SketchScene");
     }
 
     private void LateUpdate()

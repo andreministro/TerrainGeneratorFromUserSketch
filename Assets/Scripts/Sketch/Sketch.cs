@@ -1,11 +1,18 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using Unity.Collections;
+using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(MeshCollider), typeof(MeshRenderer))]
 public class Sketch : MonoBehaviour
 {
     private static readonly int MainTexture = Shader.PropertyToID("_MainTex");
+    private const int MaxUndoStrokes = 20;
 
+    [SerializeField] private Button undoButton;
+
+    private readonly List<Color32[]> undoHistory = new List<Color32[]>(MaxUndoStrokes);
     private int resolution;
     private MeshCollider canvasCollider;
     private Camera viewCamera;
@@ -13,11 +20,14 @@ public class Sketch : MonoBehaviour
     private Color32? brushColor;
     private float brushSize = 0.1f;
     private bool strokeActive;
+    private bool strokeRecorded;
     private Vector2Int? lastPixel;
 
     internal void OpenCanvas(int size)
     {
         resolution = size;
+        undoHistory.Clear();
+        undoButton.interactable = false;
         canvasCollider = GetComponent<MeshCollider>();
         viewCamera = Camera.main;
         canvasTexture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, mipChain: false)
@@ -61,6 +71,7 @@ public class Sketch : MonoBehaviour
         if (pressed)
         {
             strokeActive = overCanvas;
+            strokeRecorded = false;
             lastPixel = null;
         }
 
@@ -113,6 +124,7 @@ public class Sketch : MonoBehaviour
         // The stroke has two round ends joined by straight sides.
         // Its intersection with each row is one contiguous span.
         var pixels = canvasTexture.GetRawTextureData<Color32>();
+        bool painted = false;
         for (int y = minY; y <= maxY; y++)
         {
             float left = float.PositiveInfinity;
@@ -135,10 +147,57 @@ public class Sketch : MonoBehaviour
             int maxX = Mathf.Min(resolution - 1, Mathf.FloorToInt(right));
             int row = y * resolution;
             for (int x = minX; x <= maxX; x++)
+            {
+                if (!strokeRecorded)
+                {
+                    Color32 previous = pixels[row + x];
+                    if (previous.r == color.r && previous.g == color.g && previous.b == color.b && previous.a == color.a)
+                        continue;
+
+                    RecordUndo(pixels);
+                }
+
                 pixels[row + x] = color;
+                painted = true;
+            }
         }
 
+        if (painted)
+            canvasTexture.Apply(updateMipmaps: false);
+    }
+
+    private void RecordUndo(NativeArray<Color32> pixels)
+    {
+        Color32[] snapshot;
+        if (undoHistory.Count == MaxUndoStrokes)
+        {
+            snapshot = undoHistory[0];
+            undoHistory.RemoveAt(0);
+        }
+        else
+        {
+            snapshot = new Color32[pixels.Length];
+        }
+
+        pixels.CopyTo(snapshot);
+        undoHistory.Add(snapshot);
+        strokeRecorded = true;
+        undoButton.interactable = true;
+    }
+
+    public void Undo()
+    {
+        if (undoHistory.Count == 0)
+            return;
+
+        int last = undoHistory.Count - 1;
+        canvasTexture.SetPixelData(undoHistory[last], 0);
         canvasTexture.Apply(updateMipmaps: false);
+        undoHistory.RemoveAt(last);
+        undoButton.interactable = undoHistory.Count > 0;
+        strokeActive = false;
+        strokeRecorded = false;
+        lastPixel = null;
     }
 
     private static void IncludeBrushCap(Vector2 center, int y, float radiusSquared, ref float left, ref float right)
