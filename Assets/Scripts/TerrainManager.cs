@@ -152,7 +152,7 @@ public class TerrainManager : MonoBehaviour
         CompletedBuildSteps = 0;
         noiseRebuildAt = float.PositiveInfinity;
         buildNoise = biomeNoise;
-        var terrainGeneration = new TerrainGeneration(readImg, buildNoise);
+        var terrainGeneration = new TerrainGeneration(readImg, buildNoise, cachedSketchWidth: sketchWidth);
         buildRoutine = StartCoroutine(BuildTerrain(minChunk, maxChunk, topChunk, chunkSize, chunkCount, terrainGeneration));
     }
 

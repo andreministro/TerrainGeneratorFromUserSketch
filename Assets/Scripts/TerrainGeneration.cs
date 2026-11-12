@@ -6,22 +6,44 @@ using SimplexNoise;
 
 public class TerrainGeneration
 {
+    private readonly struct ColumnElevation
+    {
+        public readonly Biome Biome;
+        public readonly int StoneHeight;
+        public readonly int SurfaceHeight;
+
+        public ColumnElevation(Biome biome, int stoneHeight, int surfaceHeight)
+        {
+            Biome = biome;
+            StoneHeight = stoneHeight;
+            SurfaceHeight = surfaceHeight;
+        }
+    }
+
     private readonly ReadImage sketch;
     private readonly BiomeNoiseProfiles noise;
     private readonly float noiseOffsetX;
     private readonly float noiseOffsetZ;
+    private readonly int cachedSketchWidth;
+    private readonly ColumnElevation[] columnElevations;
 
     public TerrainGeneration(ReadImage sketch) : this(sketch, BiomeNoiseProfiles.Default)
     {
     }
 
-    internal TerrainGeneration(ReadImage sketch, BiomeNoiseProfiles noise)
+    internal TerrainGeneration(ReadImage sketch, BiomeNoiseProfiles noise, int cachedSketchWidth = 0)
     {
         this.sketch = sketch;
         this.noise = noise;
         var random = new System.Random(sketch.seed);
         noiseOffsetX = random.Next(-100000, 100000);
         noiseOffsetZ = random.Next(-100000, 100000);
+
+        if (cachedSketchWidth > 0)
+        {
+            this.cachedSketchWidth = cachedSketchWidth;
+            columnElevations = new ColumnElevation[cachedSketchWidth * cachedSketchWidth];
+        }
     }
 
     float TforestTreeFrequency = 0.6f;
@@ -126,8 +148,9 @@ public class TerrainGeneration
     //WATER 
     public Chunk ChunkColumnGenBlue(Chunk chunk, int x, int z)
     {
-        int stoneHeight = GetStoneHeight(x, z, noise.water);
-        int waterHeight = GetSurfaceHeight(x, z, stoneHeight, noise.water);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.Water, noise.water);
+        int stoneHeight = elevation.StoneHeight;
+        int waterHeight = elevation.SurfaceHeight;
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
@@ -152,8 +175,9 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenGreen(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.temperateForest;
-        int stoneHeight = GetStoneHeight(x, z, profile.height);
-        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.TemperateForest, profile.height);
+        int stoneHeight = elevation.StoneHeight;
+        int dirtHeight = elevation.SurfaceHeight;
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
@@ -198,8 +222,9 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenMagenta(Chunk chunk, int x, int z)
     {
         MountainBiomeNoise profile = noise.alpineTundra;
-        int stoneHeight = GetStoneHeight(x, z, profile.height);
-        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.AlpineTundra, profile.height);
+        int stoneHeight = elevation.StoneHeight;
+        int dirtHeight = elevation.SurfaceHeight;
 
         float snowFrequency = 0.9f;
         int snowDensity = 100;
@@ -234,8 +259,9 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenYellow(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.hotDesert;
-        int stoneHeight = GetStoneHeight(x, z, profile.height);
-        int sandHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.HotDesert, profile.height);
+        int stoneHeight = elevation.StoneHeight;
+        int sandHeight = elevation.SurfaceHeight;
 
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
@@ -272,8 +298,9 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenWhite(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.coldDesert;
-        int stoneHeight = GetStoneHeight(x, z, profile.height);
-        int snowHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.ColdDesert, profile.height);
+        int stoneHeight = elevation.StoneHeight;
+        int snowHeight = elevation.SurfaceHeight;
 
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
@@ -304,8 +331,9 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenBlack(Chunk chunk, int x, int z)
     {
         MountainBiomeNoise profile = noise.taiga;
-        int stoneHeight = GetStoneHeight(x, z, profile.height);
-        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.Taiga, profile.height);
+        int stoneHeight = elevation.StoneHeight;
+        int dirtHeight = elevation.SurfaceHeight;
 
         float snowFrequency = 0.9f;
         int snowDensity = 100;
@@ -343,8 +371,9 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenCyan(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.tropicalForest;
-        int stoneHeight = GetStoneHeight(x, z, profile.height);
-        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.TropicalForest, profile.height);
+        int stoneHeight = elevation.StoneHeight;
+        int dirtHeight = elevation.SurfaceHeight;
 
         float bushFrequency = 0.8f;
         int bushDensity = 15;
@@ -383,8 +412,9 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenRed(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.savannah;
-        int stoneHeight = GetStoneHeight(x, z, profile.height);
-        int dirtHeight = GetSurfaceHeight(x, z, stoneHeight, profile.height);
+        ColumnElevation elevation = GetColumnElevation(x, z, Biome.Savannah, profile.height);
+        int stoneHeight = elevation.StoneHeight;
+        int dirtHeight = elevation.SurfaceHeight;
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
@@ -600,17 +630,28 @@ public class TerrainGeneration
         }
     }
 
-    private int GetStoneHeight(int x, int z, in TerrainHeightNoise profile)
+    private ColumnElevation GetColumnElevation(int x, int z, Biome biome, in TerrainHeightNoise profile)
     {
-        int broadHeight = profile.baseElevation + GetNoise(x, 0, z, profile.hillFrequency, profile.hillHeightRange);
-        return Mathf.Max(broadHeight, profile.minimumElevation)
-            + GetNoise(x, 0, z, profile.detailFrequency, profile.detailHeightRange);
+        int columnX = x + cachedSketchWidth / 2;
+        int columnZ = z + cachedSketchWidth / 2;
+        if ((uint)columnX >= (uint)cachedSketchWidth || (uint)columnZ >= (uint)cachedSketchWidth)
+            return SampleColumnElevation(x, z, biome, profile);
+
+        ref ColumnElevation elevation = ref columnElevations[columnZ * cachedSketchWidth + columnX];
+        // An empty entry has Biome.None. Key by biome to support direct column calls as well.
+        if (elevation.Biome != biome)
+            elevation = SampleColumnElevation(x, z, biome, profile);
+        return elevation;
     }
 
-    private int GetSurfaceHeight(int x, int z, int stoneHeight, in TerrainHeightNoise profile)
+    private ColumnElevation SampleColumnElevation(int x, int z, Biome biome, in TerrainHeightNoise profile)
     {
-        return stoneHeight + profile.surfaceThickness
+        int broadHeight = profile.baseElevation + GetNoise(x, 0, z, profile.hillFrequency, profile.hillHeightRange);
+        int stoneHeight = Mathf.Max(broadHeight, profile.minimumElevation)
+            + GetNoise(x, 0, z, profile.detailFrequency, profile.detailHeightRange);
+        int surfaceHeight = stoneHeight + profile.surfaceThickness
             + GetNoise(x, 100, z, profile.surfaceFrequency, profile.surfaceHeightRange);
+        return new ColumnElevation(biome, stoneHeight, surfaceHeight);
     }
 
     private int GetNoise(int x, int y, int z, float scale, int max)
