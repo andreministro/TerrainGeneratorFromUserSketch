@@ -5,11 +5,11 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using Debug = UnityEngine.Debug;
 
-public class TerrainManager : MonoBehaviour
+public partial class TerrainManager : MonoBehaviour
 {
-    internal const int MaxSketchSize = 512;
+    internal const int MaxSketchSize = 4096;
     private const float MinVoxelSize = 0.01f;
-    private const float NoiseRebuildDelaySeconds = 0.25f;
+    private const float SettingsRebuildDelaySeconds = 0.25f;
 
     public Dictionary<WorldPosition, Chunk> chunks = new Dictionary<WorldPosition, Chunk>();
     public GameObject chunkPrefab;
@@ -23,8 +23,6 @@ public class TerrainManager : MonoBehaviour
     private BiomeNoiseProfiles biomeNoise = BiomeNoiseProfiles.Default;
 
     internal bool IsBuilding => buildRoutine != null;
-    internal int CompletedBuildSteps { get; private set; }
-    internal int TotalBuildSteps { get; private set; }
     internal int BuildVersion { get; private set; }
     internal float VoxelSize { get; private set; } = 1f;
 
@@ -33,7 +31,7 @@ public class TerrainManager : MonoBehaviour
     private int sketchWidth;
     private BiomeNoiseProfiles buildNoise;
     private volatile bool settingsNeedCheck;
-    private float noiseRebuildAt = float.PositiveInfinity;
+    private float settingsRebuildAt = float.PositiveInfinity;
 
     private void Awake()
     {
@@ -59,13 +57,22 @@ public class TerrainManager : MonoBehaviour
         {
             settingsNeedCheck = false;
             ApplyVoxelSize();
-            noiseRebuildAt = biomeNoise.Equals(buildNoise)
-                ? float.PositiveInfinity
-                : Time.unscaledTime + NoiseRebuildDelaySeconds;
+            bool needsRebuild = !biomeNoise.Equals(buildNoise)
+                || (UsesStreaming && overviewDetail != buildOverviewDetail);
+            settingsRebuildAt = needsRebuild
+                ? Time.unscaledTime + SettingsRebuildDelaySeconds
+                : float.PositiveInfinity;
         }
 
-        if (!IsBuilding && TotalBuildSteps > 0 && Time.unscaledTime >= noiseRebuildAt)
-            BeginBuild();
+        if (!IsBuilding && HasTerrain && Time.unscaledTime >= settingsRebuildAt)
+        {
+            if (UsesStreaming && streamGeneration != null && biomeNoise.Equals(buildNoise))
+                BeginOverviewBuild(streamGeneration, regenerateTerrain: false);
+            else
+                BeginBuild();
+        }
+
+        UpdateStreaming();
     }
 
     private void ApplyVoxelSize()
@@ -126,7 +133,7 @@ public class TerrainManager : MonoBehaviour
 
     public void CreateFromSketch(int width, int height)
     {
-        if (IsBuilding || chunks.Count != 0)
+        if (IsBuilding || HasTerrain)
             return;
 
         if (!IsSupportedSketchSize(width, height))
@@ -141,18 +148,22 @@ public class TerrainManager : MonoBehaviour
 
     private void BeginBuild()
     {
+        settingsRebuildAt = float.PositiveInfinity;
+        buildNoise = biomeNoise;
+        var terrainGeneration = new TerrainGeneration(readImg, buildNoise, cachedSketchWidth: UsesStreaming ? 0 : sketchWidth);
+        if (UsesStreaming)
+        {
+            BeginOverviewBuild(terrainGeneration, regenerateTerrain: true);
+            return;
+        }
+
         int chunkSize = Chunk.chunkSize;
         int minCoordinate = -(sketchWidth / 2);
         int minChunk = GetChunkOrigin(minCoordinate);
         int maxChunk = GetChunkOrigin(minCoordinate + sketchWidth - 1);
-        int topChunk = sketchWidth <= 64 ? chunkSize : 3 * chunkSize;
+        int topChunk = TopChunk;
         int chunksPerSide = (maxChunk - minChunk) / chunkSize + 1;
         int chunkCount = chunksPerSide * chunksPerSide * (topChunk / chunkSize + 2);
-        TotalBuildSteps = chunkCount * 2;
-        CompletedBuildSteps = 0;
-        noiseRebuildAt = float.PositiveInfinity;
-        buildNoise = biomeNoise;
-        var terrainGeneration = new TerrainGeneration(readImg, buildNoise, cachedSketchWidth: sketchWidth);
         buildRoutine = StartCoroutine(BuildTerrain(minChunk, maxChunk, topChunk, chunkSize, chunkCount, terrainGeneration));
     }
 
@@ -183,7 +194,6 @@ public class TerrainManager : MonoBehaviour
                         }
                         chunk.enabled = false;
                         generatedChunks.Add(chunk);
-                        CompletedBuildSteps++;
 
                         if (frameWork.Elapsed.TotalMilliseconds >= buildBudgetMilliseconds)
                         {
@@ -197,13 +207,13 @@ public class TerrainManager : MonoBehaviour
             // Face culling needs neighboring blocks, including those in other chunks.
             yield return null;
             frameWork.Restart();
-            foreach (Chunk chunk in generatedChunks)
+            for (int i = 0; i < generatedChunks.Count; i++)
             {
+                Chunk chunk = generatedChunks[i];
                 chunk.RebuildMesh();
                 chunk.enabled = true;
-                CompletedBuildSteps++;
 
-                if (CompletedBuildSteps < TotalBuildSteps && frameWork.Elapsed.TotalMilliseconds >= buildBudgetMilliseconds)
+                if (i + 1 < generatedChunks.Count && frameWork.Elapsed.TotalMilliseconds >= buildBudgetMilliseconds)
                 {
                     yield return null;
                     frameWork.Restart();
@@ -223,6 +233,7 @@ public class TerrainManager : MonoBehaviour
 
     private void OnDisable()
     {
+        StopStreaming();
         if (buildRoutine == null)
             return;
 
@@ -240,8 +251,6 @@ public class TerrainManager : MonoBehaviour
         }
 
         chunks.Clear();
-        CompletedBuildSteps = 0;
-        TotalBuildSteps = 0;
     }
 
     private static int GetChunkOrigin(int coordinate)
@@ -252,6 +261,8 @@ public class TerrainManager : MonoBehaviour
     public Chunk GetChunk(int x, int y, int z)
     {
         var position = new WorldPosition(GetChunkOrigin(x), GetChunkOrigin(y), GetChunkOrigin(z));
+        if (meshingWindow.HasValue && !meshingWindow.Value.Contains(GetColumn(position)))
+            return null;
         chunks.TryGetValue(position, out Chunk chunk);
         return chunk;
     }

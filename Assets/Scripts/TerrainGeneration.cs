@@ -24,8 +24,8 @@ public class TerrainGeneration
     private readonly BiomeNoiseProfiles noise;
     private readonly float noiseOffsetX;
     private readonly float noiseOffsetZ;
-    private readonly int cachedSketchWidth;
-    private readonly ColumnElevation[] columnElevations;
+    private RectInt elevationCacheBounds;
+    private ColumnElevation[] columnElevations;
 
     public TerrainGeneration(ReadImage sketch) : this(sketch, BiomeNoiseProfiles.Default)
     {
@@ -41,37 +41,20 @@ public class TerrainGeneration
 
         if (cachedSketchWidth > 0)
         {
-            this.cachedSketchWidth = cachedSketchWidth;
-            columnElevations = new ColumnElevation[cachedSketchWidth * cachedSketchWidth];
+            int minimum = -(cachedSketchWidth / 2);
+            ResetElevationCache(new RectInt(minimum, minimum, cachedSketchWidth, cachedSketchWidth));
         }
     }
 
-    float TforestTreeFrequency = 0.6f;
-    int TforestTreeDensity = 4;
-
-    float taigaTreeFrequency = 0.6f;
-    int taigaTreeDensity = 3;
-
-    float tropicalTreeFrequency = 0.9f;
-    int tropicalTreeDensity = 11;
-
-    float savannahTreeFrequency = 0.35f;
-    int savannahTreeDensity = 3;
-
-    float cactiFrequency = 0.7f;
-    int cactiDensity = 6;
-
-    float shrubFrequency = 0.9f;
-    float shrubDensity = 10;
-
-    float flowerRedFrequency = 0.7f;
-    float flowerRedDensity = 8;
-
-    float flowerBlueFrequency = 0.73f;
-    float flowerBlueDensity = 6;
-
-    float flowerPinkFrequency = 0.71f;
-    float flowerPinkDensity = 7;
+    internal void ResetElevationCache(RectInt bounds)
+    {
+        elevationCacheBounds = bounds;
+        int count = bounds.width * bounds.height;
+        if (columnElevations == null || columnElevations.Length < count)
+            columnElevations = new ColumnElevation[count];
+        else
+            System.Array.Clear(columnElevations, 0, count);
+    }
 
     /*float buildingFrequency = 0.7f;
     float buildingDensity = 7;
@@ -175,6 +158,7 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenGreen(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.temperateForest;
+        TemperateForestPlants plants = noise.vegetation.temperateForest;
         ColumnElevation elevation = GetColumnElevation(x, z, Biome.TemperateForest, profile.height);
         int stoneHeight = elevation.StoneHeight;
         int dirtHeight = elevation.SurfaceHeight;
@@ -191,19 +175,19 @@ public class TerrainGeneration
             {
                 SetBlock(x, y, z, BlockId.GrassNormal, chunk);
 
-                if (y == dirtHeight && GetNoise(x, 0 , z, TforestTreeFrequency, 100) < TforestTreeDensity)
+                if (y == dirtHeight && SpawnsPlant(x, z, plants.trees))
                 {
                     CreateNormalTree(x, y + 1, z, chunk);
                 }
-                else if(y == dirtHeight && GetNoise(x, 0, z, flowerRedFrequency, 100) < flowerRedDensity)
+                else if (y == dirtHeight && SpawnsPlant(x, z, plants.redFlowers))
                 {
                     SetBlock(x, y + 1, z, BlockId.RedFlower, chunk, false);
                 }
-                else if (y == dirtHeight && GetNoise(x, 0, z, flowerBlueFrequency, 100) < flowerBlueDensity)
+                else if (y == dirtHeight && SpawnsPlant(x, z, plants.blueFlowers))
                 {
                     SetBlock(x, y + 1, z, BlockId.BlueFlower, chunk, false);
                 }
-                else if (y == dirtHeight && GetNoise(x, 0, z, flowerPinkFrequency, 100) < flowerPinkDensity)
+                else if (y == dirtHeight && SpawnsPlant(x, z, plants.pinkFlowers))
                 {
                     SetBlock(x, y + 1, z, BlockId.PinkFlower, chunk, false);
                 }
@@ -259,6 +243,7 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenYellow(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.hotDesert;
+        HotDesertPlants plants = noise.vegetation.hotDesert;
         ColumnElevation elevation = GetColumnElevation(x, z, Biome.HotDesert, profile.height);
         int stoneHeight = elevation.StoneHeight;
         int sandHeight = elevation.SurfaceHeight;
@@ -275,11 +260,11 @@ public class TerrainGeneration
             {
                 SetBlock(x, y, z, BlockId.Sand, chunk, true);
 
-                if(y == sandHeight && GetNoise(x, 0, z, cactiFrequency, 100) < cactiDensity)
+                if (y == sandHeight && SpawnsPlant(x, z, plants.cacti))
                 {
                     CreateCacti(x, y + 1, z, chunk);
                 }
-                else if(y == sandHeight && GetNoise(x, 0, z, shrubFrequency, 100) < shrubDensity)
+                else if (y == sandHeight && SpawnsPlant(x, z, plants.dryShrubs))
                 {
                     SetBlock(x, y + 1, z, BlockId.DryBush, chunk, true);
                 }
@@ -314,7 +299,7 @@ public class TerrainGeneration
             {
                 SetBlock(x, y, z, BlockId.Snow, chunk);
 
-                if (y == snowHeight && GetNoise(x, 0, z, shrubFrequency, 100) < shrubDensity)
+                if (y == snowHeight && SpawnsPlant(x, z, noise.vegetation.coldDesertFrozenShrubs))
                 {
                     SetBlock(x, y + 1, z, BlockId.FrozenBush, chunk, true);
                 }
@@ -354,7 +339,7 @@ public class TerrainGeneration
                 {
                     SetBlock(x, y + 1, z, BlockId.Snow, chunk);
                 }
-                else if (y == dirtHeight && GetNoise(x, 0, z, taigaTreeFrequency, 100) < taigaTreeDensity)
+                else if (y == dirtHeight && SpawnsPlant(x, z, noise.vegetation.taigaTrees))
                 {
                     CreateTaigaTree(x, y + 1, z, chunk);
                 }
@@ -371,12 +356,10 @@ public class TerrainGeneration
     public Chunk ChunkColumnGenCyan(Chunk chunk, int x, int z)
     {
         LandBiomeNoise profile = noise.tropicalForest;
+        TropicalForestPlants plants = noise.vegetation.tropicalForest;
         ColumnElevation elevation = GetColumnElevation(x, z, Biome.TropicalForest, profile.height);
         int stoneHeight = elevation.StoneHeight;
         int dirtHeight = elevation.SurfaceHeight;
-
-        float bushFrequency = 0.8f;
-        int bushDensity = 15;
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
@@ -390,11 +373,11 @@ public class TerrainGeneration
             {
                 SetBlock(x, y, z, BlockId.GrassTropical, chunk);
 
-                if (y == dirtHeight && GetNoise(x, 0, z, tropicalTreeFrequency, 100) < tropicalTreeDensity)
+                if (y == dirtHeight && SpawnsPlant(x, z, plants.trees))
                 {
                     CreateTropicalTree(x, y + 1, z, chunk);
                 }
-                else if(y == dirtHeight && GetNoise(x, 0, z, bushFrequency, 100) < bushDensity && profile.caveCutoff < caveChance)
+                else if (y == dirtHeight && SpawnsPlant(x, z, plants.bushes) && profile.caveCutoff < caveChance)
                 {
                     CreateTropicalBush(x, y + 1, z, chunk);
                 }
@@ -428,7 +411,7 @@ public class TerrainGeneration
             {
                 SetBlock(x, y, z, BlockId.GrassDry, chunk);
 
-                if (y == dirtHeight && GetNoise(x, 0, z, savannahTreeFrequency, 100) < savannahTreeDensity)
+                if (y == dirtHeight && SpawnsPlant(x, z, noise.vegetation.savannahTrees))
                 {
                     CreateSavannahTree(x, y + 1, z, chunk);
                 }
@@ -643,15 +626,40 @@ public class TerrainGeneration
 
     private ColumnElevation GetColumnElevation(int x, int z, Biome biome, in TerrainHeightNoise profile)
     {
-        int columnX = x + cachedSketchWidth / 2;
-        int columnZ = z + cachedSketchWidth / 2;
-        if ((uint)columnX >= (uint)cachedSketchWidth || (uint)columnZ >= (uint)cachedSketchWidth)
+        int columnX = x - elevationCacheBounds.xMin;
+        int columnZ = z - elevationCacheBounds.yMin;
+        if ((uint)columnX >= (uint)elevationCacheBounds.width || (uint)columnZ >= (uint)elevationCacheBounds.height)
             return SampleColumnElevation(x, z, biome, profile);
 
-        ref ColumnElevation elevation = ref columnElevations[columnZ * cachedSketchWidth + columnX];
+        ref ColumnElevation elevation = ref columnElevations[columnZ * elevationCacheBounds.width + columnX];
         // An empty entry has Biome.None. Key by biome to support direct column calls as well.
         if (elevation.Biome != biome)
             elevation = SampleColumnElevation(x, z, biome, profile);
+        return elevation;
+    }
+
+    internal int GetOverviewSurface(int x, int z, out BlockId surface)
+    {
+        Biome biome = sketch.GetBiome(x, z);
+        TerrainHeightNoise height;
+        (height, surface) = biome switch
+        {
+            Biome.Water => (noise.water, BlockId.Water),
+            Biome.HotDesert => (noise.hotDesert.height, BlockId.Sand),
+            Biome.AlpineTundra => (noise.alpineTundra.height, BlockId.DirtGrass),
+            Biome.TemperateForest => (noise.temperateForest.height, BlockId.GrassNormal),
+            Biome.ColdDesert => (noise.coldDesert.height, BlockId.Snow),
+            Biome.Taiga => (noise.taiga.height, BlockId.GrassDark),
+            Biome.TropicalForest => (noise.tropicalForest.height, BlockId.GrassTropical),
+            _ => (noise.savannah.height, BlockId.GrassDry)
+        };
+        int elevation = GetColumnElevation(x, z, biome, height).SurfaceHeight;
+        if ((biome == Biome.AlpineTundra && elevation >= noise.alpineTundra.snowline)
+            || (biome == Biome.Taiga && elevation >= noise.taiga.snowline))
+        {
+            surface = BlockId.Snow;
+            elevation++;
+        }
         return elevation;
     }
 
@@ -663,6 +671,11 @@ public class TerrainGeneration
         int surfaceHeight = stoneHeight + profile.surfaceThickness
             + GetNoise(x, 100, z, profile.surfaceFrequency, profile.surfaceHeightRange);
         return new ColumnElevation(biome, stoneHeight, surfaceHeight);
+    }
+
+    private bool SpawnsPlant(int x, int z, in PlantSpawnNoise plant)
+    {
+        return plant.spawnCutoff > 0 && GetNoise(x, 0, z, plant.frequency, 100) < plant.spawnCutoff;
     }
 
     private int GetNoise(int x, int y, int z, float scale, int max)

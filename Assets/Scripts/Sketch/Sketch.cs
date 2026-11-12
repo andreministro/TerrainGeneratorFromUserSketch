@@ -9,11 +9,13 @@ public class Sketch : MonoBehaviour
 {
     private static readonly int MainTexture = Shader.PropertyToID("_MainTex");
     private const int MaxUndoStrokes = 20;
+    private const int UndoMemoryBudgetBytes = 128 * 1024 * 1024;
 
     [SerializeField] private Button undoButton;
 
     private readonly List<Color32[]> undoHistory = new List<Color32[]>(MaxUndoStrokes);
     private int resolution;
+    private int undoCapacity;
     private MeshCollider canvasCollider;
     private Camera viewCamera;
     private Texture2D canvasTexture;
@@ -26,6 +28,7 @@ public class Sketch : MonoBehaviour
     internal void OpenCanvas(int size)
     {
         resolution = size;
+        undoCapacity = Mathf.Clamp(UndoMemoryBudgetBytes / (resolution * resolution * 4), 1, MaxUndoStrokes);
         undoHistory.Clear();
         undoButton.interactable = false;
         canvasCollider = GetComponent<MeshCollider>();
@@ -169,7 +172,7 @@ public class Sketch : MonoBehaviour
     private void RecordUndo(NativeArray<Color32> pixels)
     {
         Color32[] snapshot;
-        if (undoHistory.Count == MaxUndoStrokes)
+        if (undoHistory.Count == undoCapacity)
         {
             snapshot = undoHistory[0];
             undoHistory.RemoveAt(0);

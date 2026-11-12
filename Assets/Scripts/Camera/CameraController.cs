@@ -13,6 +13,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private TerrainManager terrain;
     private float framedAspect;
     private int framedBuildVersion;
+    private int framedOverviewVersion;
     private float framedVoxelSize;
     private float viewVoxelSize = 1f;
     private float overviewFarClip;
@@ -20,11 +21,16 @@ public class CameraController : MonoBehaviour
     private float playerFarClip;
     private Camera playerCamera;
     private CharacterController playerController;
+    private PlayerMovement playerMovement;
+    private bool hasFlown;
 
     void Start()
     {
         playerCamera = Player.GetComponentInChildren<Camera>(true);
         playerController = Player.GetComponent<CharacterController>();
+        playerMovement = Player.GetComponent<PlayerMovement>();
+        playerMovement.SetTerrain(terrain);
+        FPSCam.GetComponent<FPSCamMovement>().SetTerrain(terrain);
         overviewFarClip = orthoCam.farClipPlane;
         flyFarClip = FPSCam.farClipPlane;
         playerFarClip = playerCamera.farClipPlane;
@@ -42,6 +48,11 @@ public class CameraController : MonoBehaviour
             StartNewSketch();
             return;
         }
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            SetCursorCaptured(false);
+            return;
+        }
 
         if (terrain.IsBuilding)
             return;
@@ -51,15 +62,18 @@ public class CameraController : MonoBehaviour
             ToggleFlyCamera();
         }
         else if (Input.GetKeyDown(KeyCode.L))
-        {
-            orthoCam.enabled = false;
-            FPSCam.enabled = false;
-            Player.SetActive(true);
-        }
+            ShowPlayer();
         else if (Input.GetKeyDown(KeyCode.O))
-        {
             ShowOverview();
+        else if (Input.GetKeyDown(KeyCode.R))
+        {
+            if (FPSCam.enabled)
+                ChangeSettingsFPS();
+            else if (Player.activeSelf)
+                playerMovement.RespawnAt(terrain.transform.position);
         }
+        else if (!orthoCam.enabled && Input.GetMouseButtonDown(0))
+            SetCursorCaptured(true);
     }
 
     private void ToggleFlyCamera()
@@ -70,10 +84,31 @@ public class CameraController : MonoBehaviour
             return;
         }
 
+        if (Player.activeSelf)
+            FPSCam.transform.position = playerCamera.transform.position + Vector3.up * (4f * terrain.VoxelSize);
+        else if (!hasFlown)
+            ChangeSettingsFPS();
+
+        hasFlown = true;
         orthoCam.enabled = false;
         Player.SetActive(false);
         FPSCam.enabled = true;
-        ChangeSettingsFPS();
+        terrain.SetExplorationTarget(FPSCam.transform);
+        SetCursorCaptured(true);
+    }
+
+    private void ShowPlayer()
+    {
+        if (Player.activeSelf)
+            return;
+
+        Vector3 start = FPSCam.enabled ? FPSCam.transform.position : Player.transform.position;
+        orthoCam.enabled = false;
+        FPSCam.enabled = false;
+        Player.SetActive(true);
+        playerMovement.RespawnAt(start);
+        terrain.SetExplorationTarget(Player.transform);
+        SetCursorCaptured(true);
     }
 
     private void ShowOverview()
@@ -81,12 +116,37 @@ public class CameraController : MonoBehaviour
         FPSCam.enabled = false;
         Player.SetActive(false);
         orthoCam.enabled = true;
+        terrain.SetExplorationTarget(null);
+        SetCursorCaptured(false);
         ChangeSettingsOrtho();
     }
 
     private void StartNewSketch()
     {
+        SetCursorCaptured(false);
         SceneManager.LoadScene("SketchScene");
+    }
+
+    private void OnDisable() => SetCursorCaptured(false);
+
+    private static void SetCursorCaptured(bool captured)
+    {
+        Cursor.lockState = captured ? CursorLockMode.Locked : CursorLockMode.None;
+        Cursor.visible = !captured;
+    }
+
+    internal string ControlHint
+    {
+        get
+        {
+            if (orthoCam.enabled)
+                return "K Fly  ·  L Walk  ·  P New sketch";
+            if (Cursor.lockState != CursorLockMode.Locked)
+                return "Click to resume mouse look  ·  K Fly / Overview  ·  L Walk  ·  O Overview  ·  P New sketch";
+            if (FPSCam.enabled)
+                return "WASD Fly  ·  Space / Ctrl Up / Down  ·  Shift Boost  ·  R Reset  ·  Esc Release mouse\nK Overview  ·  L Walk  ·  P New sketch";
+            return "WASD Walk  ·  Space Jump  ·  Shift Sprint  ·  R Respawn  ·  Esc Release mouse\nK Fly  ·  O Overview  ·  P New sketch";
+        }
     }
 
     private void LateUpdate()
@@ -96,6 +156,7 @@ public class CameraController : MonoBehaviour
 
         if (!terrain.IsBuilding && orthoCam.enabled
             && (framedAspect != orthoCam.aspect || framedBuildVersion != terrain.BuildVersion
+                || framedOverviewVersion != terrain.OverviewVersion
                 || framedVoxelSize != terrain.VoxelSize))
             ChangeSettingsOrtho();
     }
@@ -120,40 +181,54 @@ public class CameraController : MonoBehaviour
 
     public void ChangeSettingsOrtho()
     {
-        Bounds bounds = default;
-        bool hasTerrain = false;
-        foreach (var chunk in terrain.chunks.Values)
+        Transform view = orthoCam.transform;
+        Vector3 minimum = Vector3.one * float.PositiveInfinity;
+        Vector3 maximum = Vector3.one * float.NegativeInfinity;
+        var overviewBounds = terrain.GetOverviewBounds();
+        if (overviewBounds != null)
         {
-            Mesh mesh = chunk.GetComponent<MeshFilter>().sharedMesh;
-            if (chunk.update || mesh == null)
-                return;
-            if (mesh.vertexCount == 0)
-                continue;
-
-            Bounds chunkBounds = chunk.GetComponent<MeshRenderer>().bounds;
-            if (hasTerrain)
-                bounds.Encapsulate(chunkBounds);
-            else
+            foreach (Bounds bounds in overviewBounds)
+                Include(bounds);
+        }
+        else
+        {
+            foreach (var chunk in terrain.chunks.Values)
             {
-                bounds = chunkBounds;
-                hasTerrain = true;
+                Mesh mesh = chunk.GetComponent<MeshFilter>().sharedMesh;
+                if (chunk.update || mesh == null)
+                    return;
+                if (mesh.vertexCount == 0)
+                    continue;
+
+                Include(chunk.GetComponent<MeshRenderer>().bounds);
             }
         }
 
         framedAspect = orthoCam.aspect;
         framedBuildVersion = terrain.BuildVersion;
+        framedOverviewVersion = terrain.OverviewVersion;
         framedVoxelSize = terrain.VoxelSize;
-        if (!hasTerrain)
+        if (float.IsPositiveInfinity(minimum.x))
             return;
 
-        Transform view = orthoCam.transform;
-        float halfWidth = ProjectExtent(bounds.extents, view.right);
-        float halfHeight = ProjectExtent(bounds.extents, view.up);
-        float halfDepth = ProjectExtent(bounds.extents, view.forward);
-        Vector3 position = bounds.center - view.forward * (halfDepth + 10f);
+        const float framingPadding = 1.035f;
+        Vector3 center = (minimum + maximum) * 0.5f;
+        Vector3 size = maximum - minimum;
+        float clipPadding = Mathf.Max(orthoCam.nearClipPlane * 2f, size.z * 0.02f);
+        Vector3 position = view.right * center.x + view.up * center.y + view.forward * (minimum.z - clipPadding);
         cameraTarget.transform.position += position - view.position;
-        orthoCam.orthographicSize = Mathf.Max(halfHeight, halfWidth / orthoCam.aspect) * 1.1f + 0.5f;
-        orthoCam.farClipPlane = Mathf.Max(overviewFarClip, 2f * halfDepth + 20f);
+        orthoCam.orthographicSize = Mathf.Max(size.y, size.x / orthoCam.aspect) * 0.5f * framingPadding;
+        orthoCam.farClipPlane = Mathf.Max(overviewFarClip, size.z + clipPadding * 2f);
+
+        void Include(Bounds bounds)
+        {
+            Vector3 projectedCenter = new Vector3(Vector3.Dot(bounds.center, view.right),
+                Vector3.Dot(bounds.center, view.up), Vector3.Dot(bounds.center, view.forward));
+            Vector3 projectedExtents = new Vector3(ProjectExtent(bounds.extents, view.right),
+                ProjectExtent(bounds.extents, view.up), ProjectExtent(bounds.extents, view.forward));
+            minimum = Vector3.Min(minimum, projectedCenter - projectedExtents);
+            maximum = Vector3.Max(maximum, projectedCenter + projectedExtents);
+        }
     }
 
     private static float ProjectExtent(Vector3 extents, Vector3 axis)
@@ -163,7 +238,9 @@ public class CameraController : MonoBehaviour
 
     public void ChangeSettingsFPS()
     {
-        FPSCam.transform.position = terrain.transform.position + Vector3.up * (10f * viewVoxelSize);
+        if (viewVoxelSize != terrain.VoxelSize)
+            ResizeViews();
+        FPSCam.transform.position = terrain.GetFlyStart();
     }
 
 }

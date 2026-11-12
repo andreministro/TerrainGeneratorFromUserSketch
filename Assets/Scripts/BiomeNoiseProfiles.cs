@@ -56,6 +56,79 @@ internal struct MountainBiomeNoise
 }
 
 [Serializable]
+internal struct PlantSpawnNoise
+{
+    [Min(0f), Tooltip("Higher values make the placement noise vary over shorter distances.")]
+    public float frequency;
+    [Range(0, 100), Tooltip("Higher values allow more placements. Zero disables this plant.")]
+    public int spawnCutoff;
+
+    public PlantSpawnNoise(float frequency, int spawnCutoff)
+    {
+        this.frequency = frequency;
+        this.spawnCutoff = spawnCutoff;
+    }
+}
+
+[Serializable]
+internal struct TemperateForestPlants
+{
+    public PlantSpawnNoise trees;
+    public PlantSpawnNoise redFlowers;
+    public PlantSpawnNoise blueFlowers;
+    public PlantSpawnNoise pinkFlowers;
+}
+
+[Serializable]
+internal struct HotDesertPlants
+{
+    public PlantSpawnNoise cacti;
+    public PlantSpawnNoise dryShrubs;
+}
+
+[Serializable]
+internal struct TropicalForestPlants
+{
+    public PlantSpawnNoise trees;
+    public PlantSpawnNoise bushes;
+}
+
+[Serializable]
+internal struct BiomeVegetation
+{
+    public TemperateForestPlants temperateForest;
+    public HotDesertPlants hotDesert;
+    public PlantSpawnNoise taigaTrees;
+    public PlantSpawnNoise coldDesertFrozenShrubs;
+    public TropicalForestPlants tropicalForest;
+    public PlantSpawnNoise savannahTrees;
+
+    public static BiomeVegetation Default => new BiomeVegetation
+    {
+        temperateForest = new TemperateForestPlants
+        {
+            trees = new PlantSpawnNoise(0.6f, 4),
+            redFlowers = new PlantSpawnNoise(0.7f, 8),
+            blueFlowers = new PlantSpawnNoise(0.73f, 6),
+            pinkFlowers = new PlantSpawnNoise(0.71f, 7)
+        },
+        hotDesert = new HotDesertPlants
+        {
+            cacti = new PlantSpawnNoise(0.7f, 6),
+            dryShrubs = new PlantSpawnNoise(0.9f, 10)
+        },
+        taigaTrees = new PlantSpawnNoise(0.6f, 3),
+        coldDesertFrozenShrubs = new PlantSpawnNoise(0.9f, 10),
+        tropicalForest = new TropicalForestPlants
+        {
+            trees = new PlantSpawnNoise(0.9f, 11),
+            bushes = new PlantSpawnNoise(0.8f, 15)
+        },
+        savannahTrees = new PlantSpawnNoise(0.35f, 3)
+    };
+}
+
+[Serializable]
 internal struct BiomeNoiseProfiles
 {
     public TerrainHeightNoise water;
@@ -66,6 +139,7 @@ internal struct BiomeNoiseProfiles
     public LandBiomeNoise coldDesert;
     public LandBiomeNoise tropicalForest;
     public LandBiomeNoise savannah;
+    public BiomeVegetation vegetation;
 
     public static BiomeNoiseProfiles Default
     {
@@ -121,7 +195,8 @@ internal struct BiomeNoiseProfiles
                 taiga = mountains,
                 coldDesert = lowlands,
                 tropicalForest = lowlands,
-                savannah = lowlands
+                savannah = lowlands,
+                vegetation = BiomeVegetation.Default
             };
         }
     }

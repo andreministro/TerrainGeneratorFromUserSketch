@@ -19,6 +19,7 @@ public class Chunk : MonoBehaviour
 
     MeshFilter filter;
     MeshCollider coll;
+    private MeshRenderer meshRenderer;
     private Mesh renderMesh;
     private Mesh colliderMesh;
 
@@ -26,6 +27,13 @@ public class Chunk : MonoBehaviour
     {
         filter = gameObject.GetComponent<MeshFilter>();
         coll = gameObject.GetComponent<MeshCollider>();
+        meshRenderer = gameObject.GetComponent<MeshRenderer>();
+    }
+
+    internal void ShowDetail(bool visible)
+    {
+        meshRenderer.enabled = visible;
+        coll.enabled = visible;
     }
 
     private void Update()

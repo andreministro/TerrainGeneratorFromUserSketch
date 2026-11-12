@@ -29,7 +29,7 @@ public class ReadImage : MonoBehaviour
 
     public void DisplayImage()
     {
-        if (world.IsBuilding || world.chunks.Count != 0)
+        if (world.IsBuilding || world.HasTerrain)
             return;
 
         if (queuedSketch.HasValue)
@@ -67,7 +67,7 @@ public class ReadImage : MonoBehaviour
 
         mapWidth = image.width;
         mapHeight = image.height;
-        Color[] pixels = image == runtimeSketch ? image.GetPixels() : ReadImportedPixels(image);
+        Color32[] pixels = image == runtimeSketch ? image.GetPixels32() : ReadImportedPixels(image);
         biomes = new Biome[pixels.Length];
         int adjustedPixelCount = 0;
         for (int i = 0; i < pixels.Length; i++)
@@ -87,7 +87,7 @@ public class ReadImage : MonoBehaviour
         world.CreateFromSketch(mapWidth, mapHeight);
     }
 
-    private static Color[] ReadImportedPixels(Texture2D source)
+    private static Color32[] ReadImportedPixels(Texture2D source)
     {
         RenderTexture previous = RenderTexture.active;
         RenderTexture temporary = RenderTexture.GetTemporary(
@@ -98,7 +98,7 @@ public class ReadImage : MonoBehaviour
             Graphics.Blit(source, temporary);
             RenderTexture.active = temporary;
             readable.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0);
-            return readable.GetPixels();
+            return readable.GetPixels32();
         }
         finally
         {

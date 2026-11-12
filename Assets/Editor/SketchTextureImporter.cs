@@ -12,6 +12,7 @@ internal class SketchTextureImporter : AssetPostprocessor
             return;
 
         var importer = (TextureImporter)assetImporter;
+        importer.maxTextureSize = Mathf.Max(importer.maxTextureSize, 4096);
         importer.textureCompression = TextureImporterCompression.Uncompressed;
         importer.mipmapEnabled = false;
         importer.npotScale = TextureImporterNPOTScale.None;
