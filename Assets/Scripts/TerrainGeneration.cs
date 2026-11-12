@@ -140,7 +140,7 @@ public class TerrainGeneration
                     continue;
 
                 for (int y = 0; y < size; y++)
-                    chunk.blocks[x, y, z] = null;
+                    chunk.SetBlockId(x, y, z, BlockId.Unset);
             }
         }
     }
@@ -156,15 +156,15 @@ public class TerrainGeneration
         {
             if (y <= stoneHeight)
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= waterHeight)
             {
-                SetBlock(x, y, z, new BlockWater(), chunk);
+                SetBlock(x, y, z, BlockId.Water, chunk);
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
         return chunk;
@@ -185,11 +185,11 @@ public class TerrainGeneration
 
             if (y <= stoneHeight && profile.caveCutoff < caveChance )
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new BlockGrassNormal(), chunk);
+                SetBlock(x, y, z, BlockId.GrassNormal, chunk);
 
                 if (y == dirtHeight && GetNoise(x, 0 , z, TforestTreeFrequency, 100) < TforestTreeDensity)
                 {
@@ -197,20 +197,20 @@ public class TerrainGeneration
                 }
                 else if(y == dirtHeight && GetNoise(x, 0, z, flowerRedFrequency, 100) < flowerRedDensity)
                 {
-                    SetBlock(x, y + 1, z, new BlockRedFlower(), chunk, false);
+                    SetBlock(x, y + 1, z, BlockId.RedFlower, chunk, false);
                 }
                 else if (y == dirtHeight && GetNoise(x, 0, z, flowerBlueFrequency, 100) < flowerBlueDensity)
                 {
-                    SetBlock(x, y + 1, z, new BlockBlueFlower(), chunk, false);
+                    SetBlock(x, y + 1, z, BlockId.BlueFlower, chunk, false);
                 }
                 else if (y == dirtHeight && GetNoise(x, 0, z, flowerPinkFrequency, 100) < flowerPinkDensity)
                 {
-                    SetBlock(x, y + 1, z, new BlockPinkFlower(), chunk, false);
+                    SetBlock(x, y + 1, z, BlockId.PinkFlower, chunk, false);
                 }
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
 
@@ -234,21 +234,21 @@ public class TerrainGeneration
             int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
             if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new BlockDirtGrass(), chunk);
+                SetBlock(x, y, z, BlockId.DirtGrass, chunk);
 
                 if (y == dirtHeight && y >= profile.snowline
                     && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && profile.caveCutoff < caveChance)
                 {
-                    SetBlock(x, y + 1, z, new BlockSnow(), chunk);
+                    SetBlock(x, y + 1, z, BlockId.Snow, chunk);
                 }
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
 
@@ -269,11 +269,11 @@ public class TerrainGeneration
             int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
             if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= sandHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new BlockSand(), chunk, true);
+                SetBlock(x, y, z, BlockId.Sand, chunk, true);
 
                 if(y == sandHeight && GetNoise(x, 0, z, cactiFrequency, 100) < cactiDensity)
                 {
@@ -281,12 +281,12 @@ public class TerrainGeneration
                 }
                 else if(y == sandHeight && GetNoise(x, 0, z, shrubFrequency, 100) < shrubDensity)
                 {
-                    SetBlock(x, y + 1, z, new BlockDryBush(), chunk, true);
+                    SetBlock(x, y + 1, z, BlockId.DryBush, chunk, true);
                 }
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
 
@@ -308,20 +308,20 @@ public class TerrainGeneration
             int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
             if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= snowHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new BlockSnow(), chunk);
+                SetBlock(x, y, z, BlockId.Snow, chunk);
 
                 if (y == snowHeight && GetNoise(x, 0, z, shrubFrequency, 100) < shrubDensity)
                 {
-                    SetBlock(x, y + 1, z, new BlockFrozenBush(), chunk, true);
+                    SetBlock(x, y + 1, z, BlockId.FrozenBush, chunk, true);
                 }
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
         return chunk;
@@ -343,16 +343,16 @@ public class TerrainGeneration
             int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
             if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new BlockGrassDark(), chunk);
+                SetBlock(x, y, z, BlockId.GrassDark, chunk);
 
                 if (y == dirtHeight && y >= profile.snowline
                     && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && profile.caveCutoff < caveChance)
                 {
-                    SetBlock(x, y + 1, z, new BlockSnow(), chunk);
+                    SetBlock(x, y + 1, z, BlockId.Snow, chunk);
                 }
                 else if (y == dirtHeight && GetNoise(x, 0, z, taigaTreeFrequency, 100) < taigaTreeDensity)
                 {
@@ -361,7 +361,7 @@ public class TerrainGeneration
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
         return chunk;
@@ -384,11 +384,11 @@ public class TerrainGeneration
 
             if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new BlockGrassTropical(), chunk);
+                SetBlock(x, y, z, BlockId.GrassTropical, chunk);
 
                 if (y == dirtHeight && GetNoise(x, 0, z, tropicalTreeFrequency, 100) < tropicalTreeDensity)
                 {
@@ -401,7 +401,7 @@ public class TerrainGeneration
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
 
@@ -422,11 +422,11 @@ public class TerrainGeneration
 
             if (y <= stoneHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new Block(), chunk);
+                SetBlock(x, y, z, BlockId.Stone, chunk);
             }
             else if (y <= dirtHeight && profile.caveCutoff < caveChance)
             {
-                SetBlock(x, y, z, new BlockGrassDry(), chunk);
+                SetBlock(x, y, z, BlockId.GrassDry, chunk);
 
                 if (y == dirtHeight && GetNoise(x, 0, z, savannahTreeFrequency, 100) < savannahTreeDensity)
                 {
@@ -435,7 +435,7 @@ public class TerrainGeneration
             }
             else
             {
-                SetBlock(x, y, z, new BlockAir(), chunk);
+                SetBlock(x, y, z, BlockId.Air, chunk);
             }
         }
         return chunk;
@@ -450,14 +450,14 @@ public class TerrainGeneration
             {
                 for (int zi = -2; zi <= 2; zi++)
                 {
-                    SetBlock(x + xi, y + yi, z + zi, new BlockNormalLeaf(), chunk, true);
+                    SetBlock(x + xi, y + yi, z + zi, BlockId.NormalLeaf, chunk, true);
                 }
             }
         }
         //create trunk
         for (int yt = 0; yt < 6; yt++)
         {
-            SetBlock(x, y + yt, z, new BlockNormalWood(), chunk, true);
+            SetBlock(x, y + yt, z, BlockId.NormalWood, chunk, true);
         }
     }
 
@@ -470,7 +470,7 @@ public class TerrainGeneration
             {
                 for (int zi = -2; zi <= 2; zi++)
                 {
-                    SetBlock(x + xi, y + yi, z + zi, new BlockDarkLeaf(), chunk, true);
+                    SetBlock(x + xi, y + yi, z + zi, BlockId.DarkLeaf, chunk, true);
                 }
             }
         }
@@ -478,7 +478,7 @@ public class TerrainGeneration
         //create trunk
         for (int yt = 0; yt < 12; yt++)
         {
-            SetBlock(x, y + yt, z, new BlockNormalWood(), chunk, true);
+            SetBlock(x, y + yt, z, BlockId.NormalWood, chunk, true);
         }
     }
 
@@ -491,7 +491,7 @@ public class TerrainGeneration
             {
                 for (int zi = -4; zi <= 4; zi++)
                 {
-                    SetBlock(x + xi, y + yi, z + zi, new BlockDryLeaf(), chunk, true);
+                    SetBlock(x + xi, y + yi, z + zi, BlockId.DryLeaf, chunk, true);
                 }
             }
         }
@@ -499,7 +499,7 @@ public class TerrainGeneration
         //create trunk
         for (int yt = 0; yt < 8; yt++)
         {
-            SetBlock(x, y + yt, z, new BlockDryWood(), chunk, true);
+            SetBlock(x, y + yt, z, BlockId.DryWood, chunk, true);
         }
     }
 
@@ -512,7 +512,7 @@ public class TerrainGeneration
             {
                 for (int zi = -3; zi <= 3; zi++)
                 {
-                    SetBlock(x + xi, y + yi, z + zi, new BlockTropicalLeaf(), chunk, true);
+                    SetBlock(x + xi, y + yi, z + zi, BlockId.TropicalLeaf, chunk, true);
                 }
             }
         }
@@ -520,7 +520,7 @@ public class TerrainGeneration
         //create trunk
         for (int yt = 0; yt < 9; yt++)
         {
-            SetBlock(x, y + yt, z, new BlockTropicalWood(), chunk, true);   
+            SetBlock(x, y + yt, z, BlockId.TropicalWood, chunk, true);
         }
     }
 
@@ -533,7 +533,7 @@ public class TerrainGeneration
             {
                 for (int zi = -1; zi <= 1; zi++)
                 {
-                    SetBlock(x + xi, y + yi, z + zi, new BlockTropicalLeaf(), chunk, true);
+                    SetBlock(x + xi, y + yi, z + zi, BlockId.TropicalLeaf, chunk, true);
                 }
             }
         }
@@ -541,7 +541,7 @@ public class TerrainGeneration
         //create trunk
         for (int yt = 0; yt < 1; yt++)
         {
-            SetBlock(x, y + yt, z, new BlockTropicalWood(), chunk, true);
+            SetBlock(x, y + yt, z, BlockId.TropicalWood, chunk, true);
         }
     }
 
@@ -550,7 +550,7 @@ public class TerrainGeneration
     {
         for(int yt = 0; yt < 4; yt++)
         {
-            SetBlock(x, y + yt, z, new BlockCactus(), chunk, true);
+            SetBlock(x, y + yt, z, BlockId.Cactus, chunk, true);
         }
     }
 
@@ -625,9 +625,20 @@ public class TerrainGeneration
 
         if (Chunk.InRange(x) && Chunk.InRange(y) && Chunk.InRange(z))
         {
-           if (replaceBlocks || chunk.blocks[x, y, z] == null)
+           if (replaceBlocks || chunk.IsUnset(x, y, z))
                 chunk.SetBlock(x, y, z, block);
         }
+    }
+
+    private static void SetBlock(int x, int y, int z, BlockId block, Chunk chunk, bool replaceBlocks = false)
+    {
+        x -= chunk.pos.x;
+        y -= chunk.pos.y;
+        z -= chunk.pos.z;
+
+        if (Chunk.InRange(x) && Chunk.InRange(y) && Chunk.InRange(z)
+            && (replaceBlocks || chunk.IsUnset(x, y, z)))
+            chunk.SetBlockId(x, y, z, block);
     }
 
     private ColumnElevation GetColumnElevation(int x, int z, Biome biome, in TerrainHeightNoise profile)

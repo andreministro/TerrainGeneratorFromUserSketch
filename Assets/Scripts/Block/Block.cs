@@ -9,6 +9,7 @@ public class Block
     public enum Direction { north, east, south, west, up, down };
     public struct Tile { public int x; public int y; }
     const float tileSize = 0.125f;
+    private Vector2[][] cachedFaceUVs;
 
     public Block()
     {
@@ -42,8 +43,8 @@ public class Block
         meshData.AddVertex(new Vector3(x + 0.5f, y + 0.5f, z - 0.5f));
         meshData.AddVertex(new Vector3(x - 0.5f, y + 0.5f, z - 0.5f));
 
-        meshData.AddQuadTriangles();
-        meshData.uv.AddRange(FaceUVs(Direction.up));
+        meshData.AddBlockFace(Direction.up, x, y, z);
+        meshData.uv.AddRange(GetFaceUVs(Direction.up));
         return meshData;
     }
 
@@ -54,8 +55,8 @@ public class Block
         meshData.AddVertex(new Vector3(x + 0.5f, y - 0.5f, z + 0.5f));
         meshData.AddVertex(new Vector3(x - 0.5f, y - 0.5f, z + 0.5f));
 
-        meshData.AddQuadTriangles();
-        meshData.uv.AddRange(FaceUVs(Direction.down));
+        meshData.AddBlockFace(Direction.down, x, y, z);
+        meshData.uv.AddRange(GetFaceUVs(Direction.down));
         return meshData;
     }
 
@@ -66,8 +67,8 @@ public class Block
         meshData.AddVertex(new Vector3(x - 0.5f, y + 0.5f, z + 0.5f));
         meshData.AddVertex(new Vector3(x - 0.5f, y - 0.5f, z + 0.5f));
 
-        meshData.AddQuadTriangles();
-        meshData.uv.AddRange(FaceUVs(Direction.north));
+        meshData.AddBlockFace(Direction.north, x, y, z);
+        meshData.uv.AddRange(GetFaceUVs(Direction.north));
         return meshData;
     }
 
@@ -78,8 +79,8 @@ public class Block
         meshData.AddVertex(new Vector3(x + 0.5f, y + 0.5f, z + 0.5f));
         meshData.AddVertex(new Vector3(x + 0.5f, y - 0.5f, z + 0.5f));
 
-        meshData.AddQuadTriangles();
-        meshData.uv.AddRange(FaceUVs(Direction.east));
+        meshData.AddBlockFace(Direction.east, x, y, z);
+        meshData.uv.AddRange(GetFaceUVs(Direction.east));
         return meshData;
     }
 
@@ -90,8 +91,8 @@ public class Block
         meshData.AddVertex(new Vector3(x + 0.5f, y + 0.5f, z - 0.5f));
         meshData.AddVertex(new Vector3(x + 0.5f, y - 0.5f, z - 0.5f));
 
-        meshData.AddQuadTriangles();
-        meshData.uv.AddRange(FaceUVs(Direction.south));
+        meshData.AddBlockFace(Direction.south, x, y, z);
+        meshData.uv.AddRange(GetFaceUVs(Direction.south));
         return meshData;
     }
 
@@ -102,8 +103,8 @@ public class Block
         meshData.AddVertex(new Vector3(x - 0.5f, y + 0.5f, z - 0.5f));
         meshData.AddVertex(new Vector3(x - 0.5f, y - 0.5f, z - 0.5f));
 
-        meshData.AddQuadTriangles();
-        meshData.uv.AddRange(FaceUVs(Direction.west));
+        meshData.AddBlockFace(Direction.west, x, y, z);
+        meshData.uv.AddRange(GetFaceUVs(Direction.west));
         return meshData;
     }
 
@@ -136,6 +137,18 @@ public class Block
         tile.y = 0;
 
         return tile;
+    }
+
+    internal void CacheFaceUVs()
+    {
+        cachedFaceUVs = new Vector2[6][];
+        for (int i = 0; i < cachedFaceUVs.Length; i++)
+            cachedFaceUVs[i] = FaceUVs((Direction)i);
+    }
+
+    private Vector2[] GetFaceUVs(Direction direction)
+    {
+        return cachedFaceUVs == null ? FaceUVs(direction) : cachedFaceUVs[(int)direction];
     }
 
     public virtual Vector2[] FaceUVs(Direction direction)

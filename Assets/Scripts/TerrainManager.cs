@@ -174,7 +174,7 @@ public class TerrainManager : MonoBehaviour
                     {
                         if (chunks.TryGetValue(new WorldPosition(x, y, z), out Chunk chunk))
                         {
-                            System.Array.Clear(chunk.blocks, 0, chunk.blocks.Length);
+                            chunk.ClearBlocks();
                             terrainGeneration.ChunkGeneration(chunk);
                         }
                         else

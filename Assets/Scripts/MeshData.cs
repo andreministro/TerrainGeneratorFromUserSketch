@@ -11,36 +11,68 @@ public class MeshData
     public List<int> colTriangles = new List<int>();
 
     public bool useRenderDataForCol;
+    private CollisionFaceMerger collisionFaces;
+    internal bool MergeCollisionFaces { private get; set; }
+    private bool RecordMergedCollision => MergeCollisionFaces && collisionFaces != null;
+
     public MeshData()
     { 
     }
 
     public void AddQuadTriangles()
     {
-        triangles.Add(vertices.Count - 4);
-        triangles.Add(vertices.Count - 3);
-        triangles.Add(vertices.Count - 2);
+        AddQuadIndices(triangles, vertices.Count);
+        if (useRenderDataForCol && !RecordMergedCollision)
+            AddQuadIndices(colTriangles, colVertices.Count);
+    }
 
-        triangles.Add(vertices.Count - 4);
-        triangles.Add(vertices.Count - 2);
-        triangles.Add(vertices.Count - 1);
+    internal void AddBlockFace(Block.Direction direction, int x, int y, int z)
+    {
+        AddQuadTriangles();
+        if (useRenderDataForCol && RecordMergedCollision)
+            collisionFaces.Add(direction, x, y, z);
+    }
 
-        if (useRenderDataForCol)
-        {
-            colTriangles.Add(colVertices.Count - 4);
-            colTriangles.Add(colVertices.Count - 3);
-            colTriangles.Add(colVertices.Count - 2);
+    internal static void AddQuadIndices(List<int> indices, int vertexCount)
+    {
+        int first = vertexCount - 4;
+        indices.Add(first);
+        indices.Add(first + 1);
+        indices.Add(first + 2);
+        indices.Add(first);
+        indices.Add(first + 2);
+        indices.Add(first + 3);
+    }
 
-            colTriangles.Add(colVertices.Count - 4);
-            colTriangles.Add(colVertices.Count - 2);
-            colTriangles.Add(colVertices.Count - 1);
-        }
+    internal void PrepareCollisionFaces(int size)
+    {
+        if (size > 32)
+            collisionFaces = null;
+        else if (collisionFaces == null || collisionFaces.Size != size)
+            collisionFaces = new CollisionFaceMerger(size);
+    }
+
+    internal void FinishCollisionFaces()
+    {
+        collisionFaces?.AppendMesh(colVertices, colTriangles);
+    }
+
+    internal void Clear()
+    {
+        vertices.Clear();
+        triangles.Clear();
+        uv.Clear();
+        colVertices.Clear();
+        colTriangles.Clear();
+        collisionFaces?.Clear();
+        useRenderDataForCol = false;
+        MergeCollisionFaces = false;
     }
 
     public void AddVertex(Vector3 vertex)
     {
         vertices.Add(vertex);
-        if (useRenderDataForCol)
+        if (useRenderDataForCol && !RecordMergedCollision)
         {
             colVertices.Add(vertex);
         }
