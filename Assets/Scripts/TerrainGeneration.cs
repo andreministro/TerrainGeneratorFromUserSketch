@@ -24,6 +24,7 @@ public class TerrainGeneration
     private readonly BiomeNoiseProfiles noise;
     private readonly float noiseOffsetX;
     private readonly float noiseOffsetZ;
+    private readonly BiomeHeightBlend heightBlend;
     private RectInt elevationCacheBounds;
     private ColumnElevation[] columnElevations;
 
@@ -31,13 +32,16 @@ public class TerrainGeneration
     {
     }
 
-    internal TerrainGeneration(ReadImage sketch, BiomeNoiseProfiles noise, int cachedSketchWidth = 0)
+    internal TerrainGeneration(ReadImage sketch, BiomeNoiseProfiles noise, int cachedSketchWidth = 0, int biomeBlendWidth = 0)
     {
         this.sketch = sketch;
         this.noise = noise;
         var random = new System.Random(sketch.seed);
         noiseOffsetX = random.Next(-100000, 100000);
         noiseOffsetZ = random.Next(-100000, 100000);
+
+        if (biomeBlendWidth > 0 && sketch.mapWidth > 0 && sketch.mapHeight > 0)
+            heightBlend = new BiomeHeightBlend(sketch, biomeBlendWidth, SampleSurfaceHeight);
 
         if (cachedSketchWidth > 0)
         {
@@ -165,13 +169,13 @@ public class TerrainGeneration
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
+            bool solid = IsSolidLand(x, y, z, dirtHeight, profile.caveFrequency, profile.caveCutoff);
 
-            if (y <= stoneHeight && profile.caveCutoff < caveChance )
+            if (solid && y <= stoneHeight)
             {
                 SetBlock(x, y, z, BlockId.Stone, chunk);
             }
-            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
+            else if (solid)
             {
                 SetBlock(x, y, z, BlockId.GrassNormal, chunk);
 
@@ -215,17 +219,17 @@ public class TerrainGeneration
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
-            if (y <= stoneHeight && profile.caveCutoff < caveChance)
+            bool solid = IsSolidLand(x, y, z, dirtHeight, profile.caveFrequency, profile.caveCutoff);
+            if (solid && y <= stoneHeight)
             {
                 SetBlock(x, y, z, BlockId.Stone, chunk);
             }
-            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
+            else if (solid)
             {
                 SetBlock(x, y, z, BlockId.DirtGrass, chunk);
 
                 if (y == dirtHeight && y >= profile.snowline
-                    && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && profile.caveCutoff < caveChance)
+                    && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity)
                 {
                     SetBlock(x, y + 1, z, BlockId.Snow, chunk);
                 }
@@ -251,12 +255,12 @@ public class TerrainGeneration
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
-            if (y <= stoneHeight && profile.caveCutoff < caveChance)
+            bool solid = IsSolidLand(x, y, z, sandHeight, profile.caveFrequency, profile.caveCutoff);
+            if (solid && y <= stoneHeight)
             {
                 SetBlock(x, y, z, BlockId.Stone, chunk);
             }
-            else if (y <= sandHeight && profile.caveCutoff < caveChance)
+            else if (solid)
             {
                 SetBlock(x, y, z, BlockId.Sand, chunk, true);
 
@@ -290,12 +294,12 @@ public class TerrainGeneration
 
         for (int y = chunk.pos.y; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
-            if (y <= stoneHeight && profile.caveCutoff < caveChance)
+            bool solid = IsSolidLand(x, y, z, snowHeight, profile.caveFrequency, profile.caveCutoff);
+            if (solid && y <= stoneHeight)
             {
                 SetBlock(x, y, z, BlockId.Stone, chunk);
             }
-            else if (y <= snowHeight && profile.caveCutoff < caveChance)
+            else if (solid)
             {
                 SetBlock(x, y, z, BlockId.Snow, chunk);
 
@@ -325,17 +329,17 @@ public class TerrainGeneration
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
-            if (y <= stoneHeight && profile.caveCutoff < caveChance)
+            bool solid = IsSolidLand(x, y, z, dirtHeight, profile.caveFrequency, profile.caveCutoff);
+            if (solid && y <= stoneHeight)
             {
                 SetBlock(x, y, z, BlockId.Stone, chunk);
             }
-            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
+            else if (solid)
             {
                 SetBlock(x, y, z, BlockId.GrassDark, chunk);
 
                 if (y == dirtHeight && y >= profile.snowline
-                    && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity && profile.caveCutoff < caveChance)
+                    && GetNoise(x, 0, z, snowFrequency, 100) < snowDensity)
                 {
                     SetBlock(x, y + 1, z, BlockId.Snow, chunk);
                 }
@@ -363,13 +367,13 @@ public class TerrainGeneration
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
+            bool solid = IsSolidLand(x, y, z, dirtHeight, profile.caveFrequency, profile.caveCutoff);
 
-            if (y <= stoneHeight && profile.caveCutoff < caveChance)
+            if (solid && y <= stoneHeight)
             {
                 SetBlock(x, y, z, BlockId.Stone, chunk);
             }
-            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
+            else if (solid)
             {
                 SetBlock(x, y, z, BlockId.GrassTropical, chunk);
 
@@ -377,7 +381,7 @@ public class TerrainGeneration
                 {
                     CreateTropicalTree(x, y + 1, z, chunk);
                 }
-                else if (y == dirtHeight && SpawnsPlant(x, z, plants.bushes) && profile.caveCutoff < caveChance)
+                else if (y == dirtHeight && SpawnsPlant(x, z, plants.bushes))
                 {
                     CreateTropicalBush(x, y + 1, z, chunk);
                 }
@@ -401,13 +405,13 @@ public class TerrainGeneration
 
         for (int y = chunk.pos.y - 8; y < chunk.pos.y + Chunk.chunkSize; y++)
         {
-            int caveChance = GetNoise(x, y, z, profile.caveFrequency, 100);
+            bool solid = IsSolidLand(x, y, z, dirtHeight, profile.caveFrequency, profile.caveCutoff);
 
-            if (y <= stoneHeight && profile.caveCutoff < caveChance)
+            if (solid && y <= stoneHeight)
             {
                 SetBlock(x, y, z, BlockId.Stone, chunk);
             }
-            else if (y <= dirtHeight && profile.caveCutoff < caveChance)
+            else if (solid)
             {
                 SetBlock(x, y, z, BlockId.GrassDry, chunk);
 
@@ -629,31 +633,59 @@ public class TerrainGeneration
         int columnX = x - elevationCacheBounds.xMin;
         int columnZ = z - elevationCacheBounds.yMin;
         if ((uint)columnX >= (uint)elevationCacheBounds.width || (uint)columnZ >= (uint)elevationCacheBounds.height)
-            return SampleColumnElevation(x, z, biome, profile);
+            return GetBlendedElevation(x, z, biome, profile);
 
         ref ColumnElevation elevation = ref columnElevations[columnZ * elevationCacheBounds.width + columnX];
         // An empty entry has Biome.None. Key by biome to support direct column calls as well.
         if (elevation.Biome != biome)
-            elevation = SampleColumnElevation(x, z, biome, profile);
+            elevation = GetBlendedElevation(x, z, biome, profile);
         return elevation;
     }
+
+    private ColumnElevation GetBlendedElevation(int x, int z, Biome biome, in TerrainHeightNoise profile)
+    {
+        ColumnElevation original = SampleColumnElevation(x, z, biome, profile);
+        // Let land slope toward the water while preserving the water surface and bed.
+        if (heightBlend == null || biome == Biome.Water || sketch.GetBiome(x, z) != biome
+            || !heightBlend.TryGetSurface(x, z, out int surfaceHeight))
+            return original;
+
+        int offset = surfaceHeight - original.SurfaceHeight;
+        return new ColumnElevation(biome, original.StoneHeight + offset, surfaceHeight);
+    }
+
+    private int SampleSurfaceHeight(int x, int z, Biome biome)
+    {
+        return SampleColumnElevation(x, z, biome, GetHeightProfile(biome)).SurfaceHeight;
+    }
+
+    private TerrainHeightNoise GetHeightProfile(Biome biome) => biome switch
+    {
+        Biome.Water => noise.water,
+        Biome.HotDesert => noise.hotDesert.height,
+        Biome.AlpineTundra => noise.alpineTundra.height,
+        Biome.TemperateForest => noise.temperateForest.height,
+        Biome.ColdDesert => noise.coldDesert.height,
+        Biome.Taiga => noise.taiga.height,
+        Biome.TropicalForest => noise.tropicalForest.height,
+        _ => noise.savannah.height
+    };
 
     internal int GetOverviewSurface(int x, int z, out BlockId surface)
     {
         Biome biome = sketch.GetBiome(x, z);
-        TerrainHeightNoise height;
-        (height, surface) = biome switch
+        surface = biome switch
         {
-            Biome.Water => (noise.water, BlockId.Water),
-            Biome.HotDesert => (noise.hotDesert.height, BlockId.Sand),
-            Biome.AlpineTundra => (noise.alpineTundra.height, BlockId.DirtGrass),
-            Biome.TemperateForest => (noise.temperateForest.height, BlockId.GrassNormal),
-            Biome.ColdDesert => (noise.coldDesert.height, BlockId.Snow),
-            Biome.Taiga => (noise.taiga.height, BlockId.GrassDark),
-            Biome.TropicalForest => (noise.tropicalForest.height, BlockId.GrassTropical),
-            _ => (noise.savannah.height, BlockId.GrassDry)
+            Biome.Water => BlockId.Water,
+            Biome.HotDesert => BlockId.Sand,
+            Biome.AlpineTundra => BlockId.DirtGrass,
+            Biome.TemperateForest => BlockId.GrassNormal,
+            Biome.ColdDesert => BlockId.Snow,
+            Biome.Taiga => BlockId.GrassDark,
+            Biome.TropicalForest => BlockId.GrassTropical,
+            _ => BlockId.GrassDry
         };
-        int elevation = GetColumnElevation(x, z, biome, height).SurfaceHeight;
+        int elevation = GetColumnElevation(x, z, biome, GetHeightProfile(biome)).SurfaceHeight;
         if ((biome == Biome.AlpineTundra && elevation >= noise.alpineTundra.snowline)
             || (biome == Biome.Taiga && elevation >= noise.taiga.snowline))
         {
@@ -673,9 +705,42 @@ public class TerrainGeneration
         return new ColumnElevation(biome, stoneHeight, surfaceHeight);
     }
 
+    // Canopy IDs distinguish the tree silhouettes in the distant mesh.
+    internal BlockId GetOverviewPlant(int x, int z, int highestVoxel)
+    {
+        Biome biome = sketch.GetBiome(x, z);
+        BlockId plant = biome switch
+        {
+            Biome.TemperateForest when SpawnsPlant(x, z, noise.vegetation.temperateForest.trees) => BlockId.NormalLeaf,
+            Biome.Taiga when SpawnsPlant(x, z, noise.vegetation.taigaTrees) => BlockId.DarkLeaf,
+            Biome.TropicalForest when SpawnsPlant(x, z, noise.vegetation.tropicalForest.trees) => BlockId.TropicalLeaf,
+            Biome.Savannah when SpawnsPlant(x, z, noise.vegetation.savannahTrees) => BlockId.DryLeaf,
+            Biome.HotDesert when SpawnsPlant(x, z, noise.vegetation.hotDesert.cacti) => BlockId.Cactus,
+            Biome.HotDesert when SpawnsPlant(x, z, noise.vegetation.hotDesert.dryShrubs) => BlockId.DryBush,
+            Biome.ColdDesert when SpawnsPlant(x, z, noise.vegetation.coldDesertFrozenShrubs) => BlockId.FrozenBush,
+            _ => BlockId.Unset
+        };
+        if (plant == BlockId.Unset)
+            return plant;
+
+        int ground = GetColumnElevation(x, z, biome, GetHeightProfile(biome)).SurfaceHeight;
+        if (ground < -Chunk.chunkSize || ground >= highestVoxel
+            || (biome == Biome.Taiga && ground >= noise.taiga.snowline))
+            return BlockId.Unset;
+        return plant;
+    }
+
     private bool SpawnsPlant(int x, int z, in PlantSpawnNoise plant)
     {
         return plant.spawnCutoff > 0 && GetNoise(x, 0, z, plant.frequency, 100) < plant.spawnCutoff;
+    }
+
+    private bool IsSolidLand(int x, int y, int z, int surfaceHeight, float caveFrequency, int caveCutoff)
+    {
+        // Leave a solid roof under the generated surface so cave noise cannot open vertical holes.
+        const int caveRoofThickness = 4;
+        return y <= surfaceHeight && (y > surfaceHeight - caveRoofThickness
+            || GetNoise(x, y, z, caveFrequency, 100) > caveCutoff);
     }
 
     private int GetNoise(int x, int y, int z, float scale, int max)

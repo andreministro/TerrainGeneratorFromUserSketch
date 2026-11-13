@@ -146,7 +146,7 @@ public class Block
             cachedFaceUVs[i] = FaceUVs((Direction)i);
     }
 
-    private Vector2[] GetFaceUVs(Direction direction)
+    internal Vector2[] GetFaceUVs(Direction direction)
     {
         return cachedFaceUVs == null ? FaceUVs(direction) : cachedFaceUVs[(int)direction];
     }

@@ -8,6 +8,7 @@ using Debug = UnityEngine.Debug;
 public partial class TerrainManager : MonoBehaviour
 {
     internal const int MaxSketchSize = 4096;
+    private const int MaxBiomeBlendWidth = 32;
     private const float MinVoxelSize = 0.01f;
     private const float SettingsRebuildDelaySeconds = 0.25f;
 
@@ -19,6 +20,9 @@ public partial class TerrainManager : MonoBehaviour
     [Tooltip("Width, height and depth of one voxel in Unity units. Use a smaller sketch to reduce the number of voxels.")]
     private float voxelSize = 1f;
     [SerializeField, Min(1f)] private float buildBudgetMilliseconds = 8f;
+    [SerializeField, Range(0, MaxBiomeBlendWidth)]
+    [Tooltip("Number of voxel columns to smooth on each side of a biome border. Water stays at its own level. Zero keeps sharp borders.")]
+    private int biomeBlendWidth = 25;
     [SerializeField, Tooltip("Edit a biome in Play Mode to rebuild the current sketch with its new noise settings.")]
     private BiomeNoiseProfiles biomeNoise = BiomeNoiseProfiles.Default;
 
@@ -30,8 +34,10 @@ public partial class TerrainManager : MonoBehaviour
     private Transform chunkRoot;
     private int sketchWidth;
     private BiomeNoiseProfiles buildNoise;
+    private int buildBiomeBlendWidth;
     private volatile bool settingsNeedCheck;
     private float settingsRebuildAt = float.PositiveInfinity;
+    private int BiomeBlendWidth => Mathf.Clamp(biomeBlendWidth, 0, MaxBiomeBlendWidth);
 
     private void Awake()
     {
@@ -58,6 +64,7 @@ public partial class TerrainManager : MonoBehaviour
             settingsNeedCheck = false;
             ApplyVoxelSize();
             bool needsRebuild = !biomeNoise.Equals(buildNoise)
+                || BiomeBlendWidth != buildBiomeBlendWidth
                 || (UsesStreaming && overviewDetail != buildOverviewDetail);
             settingsRebuildAt = needsRebuild
                 ? Time.unscaledTime + SettingsRebuildDelaySeconds
@@ -66,7 +73,8 @@ public partial class TerrainManager : MonoBehaviour
 
         if (!IsBuilding && HasTerrain && Time.unscaledTime >= settingsRebuildAt)
         {
-            if (UsesStreaming && streamGeneration != null && biomeNoise.Equals(buildNoise))
+            if (UsesStreaming && streamGeneration != null && biomeNoise.Equals(buildNoise)
+                && BiomeBlendWidth == buildBiomeBlendWidth)
                 BeginOverviewBuild(streamGeneration, regenerateTerrain: false);
             else
                 BeginBuild();
@@ -89,7 +97,7 @@ public partial class TerrainManager : MonoBehaviour
 
     public void CreateChunk(int x, int y, int z)
     {
-        CreateChunk(x, y, z, new TerrainGeneration(readImg, biomeNoise));
+        CreateChunk(x, y, z, new TerrainGeneration(readImg, biomeNoise, biomeBlendWidth: BiomeBlendWidth));
     }
 
     private Chunk CreateChunk(int x, int y, int z, TerrainGeneration terrainGeneration)
@@ -150,7 +158,9 @@ public partial class TerrainManager : MonoBehaviour
     {
         settingsRebuildAt = float.PositiveInfinity;
         buildNoise = biomeNoise;
-        var terrainGeneration = new TerrainGeneration(readImg, buildNoise, cachedSketchWidth: UsesStreaming ? 0 : sketchWidth);
+        buildBiomeBlendWidth = BiomeBlendWidth;
+        var terrainGeneration = new TerrainGeneration(readImg, buildNoise,
+            cachedSketchWidth: UsesStreaming ? 0 : sketchWidth, biomeBlendWidth: buildBiomeBlendWidth);
         if (UsesStreaming)
         {
             BeginOverviewBuild(terrainGeneration, regenerateTerrain: true);

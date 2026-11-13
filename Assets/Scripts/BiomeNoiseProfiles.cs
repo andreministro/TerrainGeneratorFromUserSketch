@@ -35,7 +35,7 @@ internal struct LandBiomeNoise
     [Header("Caves")]
     [Min(0f), Tooltip("Higher values make cave features vary over shorter distances.")]
     public float caveFrequency;
-    [Range(0, 100), Tooltip("Higher values remove more stone and surface blocks.")]
+    [Range(0, 100), Tooltip("Higher values carve more blocks below the solid surface layer.")]
     public int caveCutoff;
 }
 
@@ -47,7 +47,7 @@ internal struct MountainBiomeNoise
     [Header("Caves")]
     [Min(0f), Tooltip("Higher values make cave features vary over shorter distances.")]
     public float caveFrequency;
-    [Range(0, 100), Tooltip("Higher values remove more stone and surface blocks.")]
+    [Range(0, 100), Tooltip("Higher values carve more blocks below the solid surface layer.")]
     public int caveCutoff;
 
     [Header("Snow")]
@@ -107,22 +107,22 @@ internal struct BiomeVegetation
     {
         temperateForest = new TemperateForestPlants
         {
-            trees = new PlantSpawnNoise(0.6f, 4),
-            redFlowers = new PlantSpawnNoise(0.7f, 8),
-            blueFlowers = new PlantSpawnNoise(0.73f, 6),
-            pinkFlowers = new PlantSpawnNoise(0.71f, 7)
+            trees = new PlantSpawnNoise(0.46f, 5),
+            redFlowers = new PlantSpawnNoise(0.7f, 6),
+            blueFlowers = new PlantSpawnNoise(0.73f, 5),
+            pinkFlowers = new PlantSpawnNoise(0.71f, 5)
         },
         hotDesert = new HotDesertPlants
         {
-            cacti = new PlantSpawnNoise(0.7f, 6),
-            dryShrubs = new PlantSpawnNoise(0.9f, 10)
+            cacti = new PlantSpawnNoise(0.3f, 3),
+            dryShrubs = new PlantSpawnNoise(0.65f, 6)
         },
-        taigaTrees = new PlantSpawnNoise(0.6f, 3),
-        coldDesertFrozenShrubs = new PlantSpawnNoise(0.9f, 10),
+        taigaTrees = new PlantSpawnNoise(0.42f, 4),
+        coldDesertFrozenShrubs = new PlantSpawnNoise(0.52f, 5),
         tropicalForest = new TropicalForestPlants
         {
-            trees = new PlantSpawnNoise(0.9f, 11),
-            bushes = new PlantSpawnNoise(0.8f, 15)
+            trees = new PlantSpawnNoise(0.65f, 5),
+            bushes = new PlantSpawnNoise(0.8f, 7)
         },
         savannahTrees = new PlantSpawnNoise(0.35f, 3)
     };
@@ -145,59 +145,78 @@ internal struct BiomeNoiseProfiles
     {
         get
         {
-            var lowlands = new LandBiomeNoise
-            {
-                height = new TerrainHeightNoise
-                {
-                    baseElevation = -28,
-                    minimumElevation = -12,
-                    hillFrequency = 0.0008f,
-                    hillHeightRange = 20,
-                    detailFrequency = 0.05f,
-                    detailHeightRange = 4,
-                    surfaceThickness = 3,
-                    surfaceFrequency = 0.04f,
-                    surfaceHeightRange = 3
-                },
-                caveFrequency = 0.025f,
-                caveCutoff = 7
-            };
-            var mountains = new MountainBiomeNoise
-            {
-                height = lowlands.height,
-                caveFrequency = 0.055f,
-                caveCutoff = 20,
-                snowline = 20
-            };
-            mountains.height.baseElevation = -24;
-            mountains.height.minimumElevation = -8;
-            mountains.height.hillFrequency = 0.048f;
-            mountains.height.hillHeightRange = 48;
-            mountains.height.surfaceThickness = 1;
-
+            // Y = 0 is the water datum. Land gains its character mainly through local relief.
             return new BiomeNoiseProfiles
             {
                 water = new TerrainHeightNoise
                 {
-                    baseElevation = -30,
-                    minimumElevation = -15,
-                    hillFrequency = 0.000000001f,
-                    hillHeightRange = 4,
-                    detailFrequency = 0f,
-                    detailHeightRange = 4,
-                    surfaceThickness = 3,
-                    surfaceFrequency = 0.0001f,
-                    surfaceHeightRange = 2
+                    baseElevation = -6,
+                    minimumElevation = -6,
+                    surfaceThickness = 6
                 },
-                temperateForest = lowlands,
-                alpineTundra = mountains,
-                hotDesert = lowlands,
-                taiga = mountains,
-                coldDesert = lowlands,
-                tropicalForest = lowlands,
-                savannah = lowlands,
+                temperateForest = new LandBiomeNoise
+                {
+                    height = TerrainHeight(-1, 0, 0.012f, 12, 2, 2),
+                    caveFrequency = 0.032f,
+                    caveCutoff = 12
+                },
+                alpineTundra = new MountainBiomeNoise
+                {
+                    height = TerrainHeight(-1, 3, 0.017f, 28, 2, 1),
+                    caveFrequency = 0.036f,
+                    caveCutoff = 14,
+                    snowline = 22
+                },
+                hotDesert = new LandBiomeNoise
+                {
+                    height = TerrainHeight(-2, -1, 0.009f, 7, 2, 2),
+                    caveFrequency = 0.030f,
+                    caveCutoff = 8
+                },
+                taiga = new MountainBiomeNoise
+                {
+                    height = TerrainHeight(-1, 1, 0.010f, 14, 2, 2),
+                    caveFrequency = 0.034f,
+                    caveCutoff = 10,
+                    snowline = 15
+                },
+                coldDesert = new LandBiomeNoise
+                {
+                    height = TerrainHeight(-1, 0, 0.009f, 9, 2, 1),
+                    caveFrequency = 0.029f,
+                    caveCutoff = 12
+                },
+                tropicalForest = new LandBiomeNoise
+                {
+                    height = TerrainHeight(-1, 0, 0.014f, 17, 2, 2),
+                    caveFrequency = 0.032f,
+                    caveCutoff = 12
+                },
+                savannah = new LandBiomeNoise
+                {
+                    height = TerrainHeight(-2, -1, 0.007f, 5, 1, 2),
+                    caveFrequency = 0.031f,
+                    caveCutoff = 9
+                },
                 vegetation = BiomeVegetation.Default
             };
         }
+    }
+
+    private static TerrainHeightNoise TerrainHeight(int baseElevation, int minimumElevation,
+        float hillFrequency, int hillHeightRange, int detailHeightRange, int surfaceThickness)
+    {
+        return new TerrainHeightNoise
+        {
+            baseElevation = baseElevation,
+            minimumElevation = minimumElevation,
+            hillFrequency = hillFrequency,
+            hillHeightRange = hillHeightRange,
+            detailFrequency = 0.055f,
+            detailHeightRange = detailHeightRange,
+            surfaceThickness = surfaceThickness,
+            surfaceFrequency = 0.032f,
+            surfaceHeightRange = 1
+        };
     }
 }
