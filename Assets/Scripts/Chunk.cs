@@ -1,13 +1,15 @@
-﻿using UnityEngine;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections;
+using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
 [RequireComponent(typeof(MeshCollider))]
 public class Chunk : MonoBehaviour
 {
-    public Block[,,] blocks = new Block[chunkSize, chunkSize, chunkSize];
+    private readonly BlockId[] blocks = new BlockId[chunkSize * chunkSize * chunkSize];
+    private Dictionary<int, Block> customBlocks;
+    private static MeshData spareMeshData;
 
     public static int chunkSize = 16;
     public bool update = true;
@@ -17,29 +19,51 @@ public class Chunk : MonoBehaviour
 
     MeshFilter filter;
     MeshCollider coll;
+    private MeshRenderer meshRenderer;
+    private Material originalMaterial;
+    private Mesh renderMesh;
+    private Mesh colliderMesh;
 
-
-    void Start()
+    private void Awake()
     {
         filter = gameObject.GetComponent<MeshFilter>();
         coll = gameObject.GetComponent<MeshCollider>();
+        meshRenderer = gameObject.GetComponent<MeshRenderer>();
+        originalMaterial = meshRenderer.sharedMaterial;
     }
 
-    //Update is called once per frame
-    void Update()
+    internal void ShowDetail(bool visible)
+    {
+        meshRenderer.enabled = visible;
+        coll.enabled = visible;
+    }
+
+    private void Update()
     {
         if (update)
-        {
-            update = false;
-            UpdateChunk();
-        }
+            RebuildMesh();
+    }
+
+    internal void RebuildMesh()
+    {
+        update = false;
+        UpdateChunk();
     }
 
     public void SetBlock(int x, int y, int z, Block block)
     {
         if (InRange(x) && InRange(y) && InRange(z))
         {
-            blocks[x, y, z] = block;
+            if (block == null)
+            {
+                SetBlockId(x, y, z, BlockId.Unset);
+                return;
+            }
+
+            int index = BlockIndex(x, y, z);
+            customBlocks ??= new Dictionary<int, Block>();
+            customBlocks[index] = block;
+            blocks[index] = BlockId.Custom;
         }
         else
         {
@@ -51,11 +75,34 @@ public class Chunk : MonoBehaviour
     public Block GetBlock(int x, int y, int z)
     {
         if (InRange(x) && InRange(y) && InRange(z))
-            return blocks[x, y, z];
+            return GetStoredBlock(BlockIndex(x, y, z)) ?? BlockAir.Empty;
 
         return world.GetBlock(pos.x + x, pos.y + y, pos.z + z);
     }
 
+    private Block GetStoredBlock(int index)
+    {
+        BlockId id = blocks[index];
+        return id == BlockId.Custom ? customBlocks[index] : BlockPalette.Get(id);
+    }
+
+    internal bool IsUnset(int x, int y, int z) => blocks[BlockIndex(x, y, z)] == BlockId.Unset;
+
+    internal void SetBlockId(int x, int y, int z, BlockId id)
+    {
+        int index = BlockIndex(x, y, z);
+        if (blocks[index] == BlockId.Custom)
+            customBlocks.Remove(index);
+        blocks[index] = id;
+    }
+
+    internal void ClearBlocks()
+    {
+        Array.Clear(blocks, 0, blocks.Length);
+        customBlocks?.Clear();
+    }
+
+    private static int BlockIndex(int x, int y, int z) => (x * chunkSize + y) * chunkSize + z;
 
     public static bool InRange(int index)
     {
@@ -68,44 +115,90 @@ public class Chunk : MonoBehaviour
     //Updates the chunk based on its contents and returns a 3dmesh
     void UpdateChunk()
     {
-        MeshData meshData = new MeshData();
-
-        for (int x = 0; x < chunkSize; x++)
+        MeshData buffer = spareMeshData ?? new MeshData();
+        spareMeshData = null;
+        try
         {
-            for (int y = 0; y < chunkSize; y++)
+            buffer.PrepareCollisionFaces(chunkSize);
+            bool blendTextures = world != null && world.HasBiomeTextureBlend;
+            buffer.WriteBiomeFlags = blendTextures;
+            MeshData meshData = buffer;
+            int index = 0;
+            for (int x = 0; x < chunkSize; x++)
             {
-                for (int z = 0; z < chunkSize; z++)
+                for (int y = 0; y < chunkSize; y++)
                 {
-                    if (blocks[x,y,z] == null)
+                    for (int z = 0; z < chunkSize; z++, index++)
                     {
-                        blocks[x, y, z] = new BlockCactus();
-                        meshData = blocks[x, y, z].Blockdata(this, x, y, z, meshData);
+                        BlockId id = blocks[index];
+                        if (id == BlockId.Unset || id == BlockId.Air)
+                            continue;
+
+                        meshData.MergeCollisionFaces = id != BlockId.Custom;
+                        if (blendTextures)
+                            meshData.BlendFace = IsBiomeSurface(id, x, z);
+                        Block block = GetStoredBlock(index);
+                        meshData = block.Blockdata(this, x, y, z, meshData);
                     }
-                    else
-                    meshData = blocks[x, y, z].Blockdata(this, x, y, z, meshData);
                 }
             }
+            meshData.FinishCollisionFaces();
+            meshData.FinishBiomeFlags();
+            RenderMesh(meshData);
         }
-        RenderMesh(meshData);
+        finally
+        {
+            buffer.Clear();
+            spareMeshData = buffer;
+        }
+    }
+
+    private bool IsBiomeSurface(BlockId id, int x, int z)
+    {
+        return id switch
+        {
+            BlockId.DirtGrass or BlockId.Sand or BlockId.GrassNormal or BlockId.GrassDark
+                or BlockId.GrassTropical or BlockId.GrassDry => true,
+            BlockId.Snow => world.readImg.GetBiome(pos.x + x, pos.z + z) == Biome.ColdDesert,
+            _ => false
+        };
     }
 
     //Sends the calculated mesh information
     //to the mesh and collision components
     void RenderMesh(MeshData meshData)
     {
-        filter.mesh.Clear();
-        filter.mesh.vertices = meshData.vertices.ToArray();
-        filter.mesh.triangles = meshData.triangles.ToArray();
+        if (renderMesh == null)
+            renderMesh = filter.mesh;
 
-        filter.mesh.uv = meshData.uv.ToArray();
-        filter.mesh.RecalculateNormals();
+        if (world != null)
+            meshRenderer.sharedMaterial = world.GetTerrainMaterial(originalMaterial);
+        renderMesh.Clear(keepVertexLayout: false);
+        renderMesh.SetVertices(meshData.vertices);
+        renderMesh.SetTriangles(meshData.triangles, 0);
+        renderMesh.SetUVs(0, meshData.uv);
+        if (meshData.biomeFlags.Count > 0)
+            renderMesh.SetColors(meshData.biomeFlags);
+        renderMesh.RecalculateNormals();
 
         coll.sharedMesh = null;
-        Mesh mesh = new Mesh();
-        mesh.vertices = meshData.colVertices.ToArray();
-        mesh.triangles = meshData.colTriangles.ToArray();
-        mesh.RecalculateNormals();
+        if (colliderMesh != null)
+            colliderMesh.Clear();
+        if (meshData.colTriangles.Count == 0)
+            return;
 
-        coll.sharedMesh = mesh;
+        if (colliderMesh == null)
+            colliderMesh = new Mesh();
+        colliderMesh.SetVertices(meshData.colVertices);
+        colliderMesh.SetTriangles(meshData.colTriangles, 0);
+        coll.sharedMesh = colliderMesh;
+    }
+
+    private void OnDestroy()
+    {
+        if (renderMesh != null)
+            Destroy(renderMesh);
+        if (colliderMesh != null)
+            Destroy(colliderMesh);
     }
 }

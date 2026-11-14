@@ -5,8 +5,6 @@ using UnityEngine;
 public class Clouds : MonoBehaviour
 {
     public int cloudHeight = 100;
-    private GameObject player;
-    private Vector3 playerPos;
 
     [SerializeField]
     private Texture2D cloudPattern = null;
@@ -23,7 +21,6 @@ public class Clouds : MonoBehaviour
 
     private void Start()
     {
-        player = GameObject.Find("Player");
         cloudTextureWidth = cloudPattern.width;
         cloudTileSize = Chunk.chunkSize;
         offset = new Vector3Int(-(cloudTextureWidth / 2), 0, -(cloudTextureWidth / 2));
@@ -63,15 +60,13 @@ public class Clouds : MonoBehaviour
 
     }
 
-    public void UpdateClouds()
+    public void UpdateClouds(Vector3 playerPosition)
     {
-        playerPos = player.transform.position;
-
         for (int x = 0; x < cloudTextureWidth; x += cloudTileSize)
         {
             for (int y = 0; y < cloudTextureWidth; y += cloudTileSize)
             {
-                Vector3 position = playerPos + new Vector3(x, 0, y) + offset;
+                Vector3 position = playerPosition + new Vector3(x, 0, y) + offset;
                 position = new Vector3(RoundToCloud(position.x), cloudHeight, RoundToCloud(position.z));
                 Vector2Int cloudPosition = CloudTilePosFromV3(position);
 

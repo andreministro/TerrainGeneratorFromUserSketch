@@ -6,26 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/ChooseSize.unity
-    guid: 0f4d13735bbf51443a19a55fffce5be9
-  - enabled: 1
-    path: Assets/Scenes/SketchUI32.unity
-    guid: 895fb697fae2a064e94e10e2cca8d9de
-  - enabled: 1
-    path: Assets/Scenes/SketchUI64.unity
-    guid: fb0a3b1d7c2aefa4a91689aec3032a63
-  - enabled: 1
-    path: Assets/Scenes/SketchUI128.unity
-    guid: 335a75e49ae4b6b41b4ada3d06ea7468
-  - enabled: 1
-    path: Assets/Scenes/SketchUI512.unity
-    guid: ee76ddd771728864f96dc8f46340c739
-  - enabled: 1
-    path: Assets/Scenes/SketchUI256.unity
-    guid: 34dcecbc16be0d6469025e89126af147
-  - enabled: 1
-    path: Assets/Scenes/SketchUI1024.unity
-    guid: c71b9a87b3b2bc44184a8ba21fa6fb32
+    path: Assets/Scenes/SketchScene.unity
+    guid: d8310d3ce05344146a59eb5679c206d0
   - enabled: 1
     path: Assets/Scenes/TerrainScene.unity
     guid: 9fc0d4010bbf28b4594072e72b8655ab

@@ -6,6 +6,8 @@ using UnityEngine;
 [Serializable]
 public class BlockAir : Block
 {
+    internal static readonly BlockAir Empty = new BlockAir();
+
     public BlockAir() : base()
     {
 

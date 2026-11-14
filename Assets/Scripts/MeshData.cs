@@ -11,36 +11,98 @@ public class MeshData
     public List<int> colTriangles = new List<int>();
 
     public bool useRenderDataForCol;
+    internal readonly List<Color32> biomeFlags = new List<Color32>();
+    internal bool WriteBiomeFlags { private get; set; }
+    internal bool BlendFace { private get; set; }
+    internal static readonly Color32 KeepTexture = new Color32(255, 0, 0, 255);
+    private CollisionFaceMerger collisionFaces;
+    internal bool MergeCollisionFaces { private get; set; }
+    private bool RecordMergedCollision => MergeCollisionFaces && collisionFaces != null;
+
     public MeshData()
     { 
     }
 
     public void AddQuadTriangles()
     {
-        triangles.Add(vertices.Count - 4);
-        triangles.Add(vertices.Count - 3);
-        triangles.Add(vertices.Count - 2);
+        AddQuadIndices(triangles, vertices.Count);
+        if (useRenderDataForCol && !RecordMergedCollision)
+            AddQuadIndices(colTriangles, colVertices.Count);
+    }
 
-        triangles.Add(vertices.Count - 4);
-        triangles.Add(vertices.Count - 2);
-        triangles.Add(vertices.Count - 1);
-
-        if (useRenderDataForCol)
+    internal void AddBlockFace(Block.Direction direction, int x, int y, int z)
+    {
+        AddQuadTriangles();
+        if (WriteBiomeFlags)
         {
-            colTriangles.Add(colVertices.Count - 4);
-            colTriangles.Add(colVertices.Count - 3);
-            colTriangles.Add(colVertices.Count - 2);
-
-            colTriangles.Add(colVertices.Count - 4);
-            colTriangles.Add(colVertices.Count - 2);
-            colTriangles.Add(colVertices.Count - 1);
+            FillBiomeFlags(vertices.Count - 4, KeepTexture);
+            FillBiomeFlags(vertices.Count, BlendFace ? BiomeFace(direction) : KeepTexture);
         }
+        if (useRenderDataForCol && RecordMergedCollision)
+            collisionFaces.Add(direction, x, y, z);
+    }
+
+    internal static Color32 BiomeFace(Block.Direction direction)
+    {
+        return new Color32(0, direction != Block.Direction.up ? (byte)255 : (byte)0,
+            direction == Block.Direction.down ? (byte)255 : (byte)0, 255);
+    }
+
+    internal void FinishBiomeFlags()
+    {
+        if (WriteBiomeFlags)
+            FillBiomeFlags(vertices.Count, KeepTexture);
+    }
+
+    private void FillBiomeFlags(int end, Color32 flags)
+    {
+        while (biomeFlags.Count < end)
+            biomeFlags.Add(flags);
+    }
+
+    internal static void AddQuadIndices(List<int> indices, int vertexCount)
+    {
+        int first = vertexCount - 4;
+        indices.Add(first);
+        indices.Add(first + 1);
+        indices.Add(first + 2);
+        indices.Add(first);
+        indices.Add(first + 2);
+        indices.Add(first + 3);
+    }
+
+    internal void PrepareCollisionFaces(int size)
+    {
+        if (size > 32)
+            collisionFaces = null;
+        else if (collisionFaces == null || collisionFaces.Size != size)
+            collisionFaces = new CollisionFaceMerger(size);
+    }
+
+    internal void FinishCollisionFaces()
+    {
+        collisionFaces?.AppendMesh(colVertices, colTriangles);
+    }
+
+    internal void Clear()
+    {
+        vertices.Clear();
+        triangles.Clear();
+        uv.Clear();
+        biomeFlags.Clear();
+        colVertices.Clear();
+        colTriangles.Clear();
+        collisionFaces?.Clear();
+        useRenderDataForCol = false;
+        MergeCollisionFaces = false;
+        WriteBiomeFlags = false;
+        BlendFace = false;
     }
 
     public void AddVertex(Vector3 vertex)
     {
         vertices.Add(vertex);
-        if (useRenderDataForCol)
+        if (useRenderDataForCol && !RecordMergedCollision)
         {
             colVertices.Add(vertex);
         }

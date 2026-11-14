@@ -5,6 +5,9 @@ EditorUserSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 4
   m_ConfigSettings:
+    GraphicsSettingsInspector_UserSettings:
+      value: 18134705175a055722080a3115371d4a0d55006876786860616b0471b8b07a68ffab74f9ee2a3a30300cea1a11320d0beb1a0c25f7060f494b4cdf1b18f3045e38cb5ad8
+      flags: 0
     QuickInstaller_com.unity.purchasing_installRecorded:
       value: 2550581500
       flags: 0
@@ -12,13 +15,16 @@ EditorUserSettings:
       value: 2550581500
       flags: 0
     RecentlyUsedSceneGuid-0:
-      value: 5a5757560101590a5d0c0e24427b5d44434e4c7a7b7a23677f2b4565b7b5353a
+      value: 5357000254065e08580c0e2445720b44451649732d7d73362b2f1e36b7e23161
       flags: 0
     RecentlyUsedSceneGuid-1:
       value: 5b0801000703500c0b0f097011730944134e4c2f7d7823622e2a1c6be6b9303d
       flags: 0
     RecentlyUsedSceneGuid-2:
-      value: 5357000254065e08580c0e2445720b44451649732d7d73362b2f1e36b7e23161
+      value: 5a5757560101590a5d0c0e24427b5d44434e4c7a7b7a23677f2b4565b7b5353a
+      flags: 0
+    RecentlyUsedSceneGuid-3:
+      value: 0709075755515a58085e597144770e4440164d73292a73667a701e61b2b63068
       flags: 0
     RecentlyUsedScenePath-0:
       value: 22424703114646680e0b0227036c6c1b13031b22190177617f67083debf42d
