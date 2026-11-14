@@ -41,7 +41,9 @@ public class TerrainBuildProgress : MonoBehaviour
 
     private void LateUpdate()
     {
-        controls.text = views.ControlHint;
+        controls.text = !terrain.IsBuilding && terrain.HasTerrain && !terrain.readImg.HasPaintedPixels
+            ? "Empty sketch  ·  P New sketch"
+            : views.ControlHint;
         bool busy = terrain.IsBuilding || (terrain.IsStreamingDetail && !views.orthoCam.enabled);
         float now = Time.unscaledTime;
         busySince = busy ? Mathf.Min(busySince, now) : float.PositiveInfinity;

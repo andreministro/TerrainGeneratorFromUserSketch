@@ -110,20 +110,16 @@ public class TerrainGeneration
 
     private void ClearChunkPadding(Chunk chunk)
     {
-        int minX = -(sketch.mapWidth / 2) - chunk.pos.x;
-        int minZ = -(sketch.mapHeight / 2) - chunk.pos.z;
-        int endX = minX + sketch.mapWidth;
-        int endZ = minZ + sketch.mapHeight;
         int size = Chunk.chunkSize;
-        if (minX <= 0 && minZ <= 0 && endX >= size && endZ >= size)
+        if (sketch.CountPainted(new RectInt(chunk.pos.x, chunk.pos.z, size, size)) == size * size)
             return;
 
-        // Decorations near the sketch edge can extend into the padding of a partial chunk.
+        // Remove any decoration blocks that extend into blank pixels or past the sketch.
         for (int x = 0; x < size; x++)
         {
             for (int z = 0; z < size; z++)
             {
-                if (x >= minX && x < endX && z >= minZ && z < endZ)
+                if (sketch.GetBiome(chunk.pos.x + x, chunk.pos.z + z) != Biome.None)
                     continue;
 
                 for (int y = 0; y < size; y++)
@@ -671,9 +667,16 @@ public class TerrainGeneration
         _ => noise.savannah.height
     };
 
+    internal bool IsColdDesert(int x, int z) => sketch.GetBiome(x, z) == Biome.ColdDesert;
+
     internal int GetOverviewSurface(int x, int z, out BlockId surface)
     {
         Biome biome = sketch.GetBiome(x, z);
+        if (biome == Biome.None)
+        {
+            surface = BlockId.Unset;
+            return 0;
+        }
         surface = biome switch
         {
             Biome.Water => BlockId.Water,

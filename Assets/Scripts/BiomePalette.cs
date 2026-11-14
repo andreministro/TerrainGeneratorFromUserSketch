@@ -38,10 +38,16 @@ internal static class BiomePalette
 
     internal static Biome Decode(Color color, out bool adjusted)
     {
+        if (color.a == 0f)
+        {
+            adjusted = false;
+            return Biome.None;
+        }
+
         adjusted = color.a != 1f
             || !IsPaletteChannel(color.r) || !IsPaletteChannel(color.g) || !IsPaletteChannel(color.b);
 
-        // Match the white background in the sketch canvas.
+        // Retain the legacy mapping for partially transparent imported colors.
         if (color.a < 1f)
             color = Color.Lerp(Color.white, color, color.a);
 

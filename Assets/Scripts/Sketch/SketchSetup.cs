@@ -22,9 +22,11 @@ public class SketchSetup : MonoBehaviour
     [SerializeField] private InputField seedInput;
     [SerializeField] private Button saveButton;
     [SerializeField] private Text saveStatus;
+    private SketchLayout layout;
 
     private void Awake()
     {
+        layout = new SketchLayout((RectTransform)transform, sizePanel, painterControls, sketch, seedInput, saveButton, saveStatus);
         sizeSlider.wholeNumbers = true;
         sizeSlider.minValue = 1;
         sizeSlider.maxValue = TerrainManager.MaxSketchSize;
@@ -32,6 +34,8 @@ public class SketchSetup : MonoBehaviour
         UpdateSizeLabel(sizeSlider.value);
         maximumSizeLabel.text = TerrainManager.MaxSketchSize.ToString();
     }
+
+    private void LateUpdate() => layout.Refresh();
 
     private void UpdateSizeLabel(float value)
     {
@@ -44,10 +48,11 @@ public class SketchSetup : MonoBehaviour
         if (!sizePanel.activeSelf)
             return;
 
-        sketch.OpenCanvas(Mathf.RoundToInt(sizeSlider.value));
+        sketch.OpenCanvas(Mathf.RoundToInt(sizeSlider.value), layout.Preview);
         sketch.gameObject.SetActive(true);
         painterControls.SetActive(true);
         sizePanel.SetActive(false);
+        layout.Refresh();
     }
 
     public void SaveAndGenerate()

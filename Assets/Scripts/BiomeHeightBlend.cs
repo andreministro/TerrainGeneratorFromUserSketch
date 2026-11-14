@@ -85,12 +85,11 @@ internal sealed class BiomeHeightBlend
             {
                 int x0 = Mathf.Max(x - width, minX) - minX;
                 int x1 = Mathf.Min(x + width + 1, endX) - minX;
-                int count = (x1 - x0) * (z1 - z0);
                 SampleTotals total = sums[z1 * stride + x1] - sums[z1 * stride + x0]
                     - sums[z0 * stride + x1] + sums[z0 * stride + x0];
 
                 // Biome IDs have zero variance when every sample belongs to the same biome.
-                if ((long)count * total.BiomeSquared == (long)total.Biome * total.Biome)
+                if ((long)total.Count * total.BiomeSquared == (long)total.Biome * total.Biome)
                     continue;
 
                 if (heights == null)
@@ -98,7 +97,7 @@ internal sealed class BiomeHeightBlend
                     heights = new int[TileSize * TileSize];
                     Array.Fill(heights, Unblended);
                 }
-                heights[(z - originZ) * TileSize + x - originX] = (int)Math.Round((double)total.Height / count);
+                heights[(z - originZ) * TileSize + x - originX] = (int)Math.Round((double)total.Height / total.Count);
             }
         }
         return heights;
@@ -116,10 +115,14 @@ internal sealed class BiomeHeightBlend
             for (int x = minX; x < endX; x++)
             {
                 Biome biome = sketch.GetBiome(x, z);
-                int id = (int)biome;
-                running.Height += sampleSurface(x, z, biome);
-                running.Biome += id;
-                running.BiomeSquared += id * id;
+                if (biome != Biome.None)
+                {
+                    int id = (int)biome;
+                    running.Count++;
+                    running.Height += sampleSurface(x, z, biome);
+                    running.Biome += id;
+                    running.BiomeSquared += id * id;
+                }
                 int index = row + x - minX + 1;
                 sums[index] = sums[index - stride] + running;
             }
@@ -168,12 +171,14 @@ internal sealed class BiomeHeightBlend
     private struct SampleTotals
     {
         public long Height;
+        public int Count;
         public int Biome;
         public int BiomeSquared;
 
         public static SampleTotals operator +(SampleTotals left, SampleTotals right) => new SampleTotals
         {
             Height = left.Height + right.Height,
+            Count = left.Count + right.Count,
             Biome = left.Biome + right.Biome,
             BiomeSquared = left.BiomeSquared + right.BiomeSquared
         };
@@ -181,6 +186,7 @@ internal sealed class BiomeHeightBlend
         public static SampleTotals operator -(SampleTotals left, SampleTotals right) => new SampleTotals
         {
             Height = left.Height - right.Height,
+            Count = left.Count - right.Count,
             Biome = left.Biome - right.Biome,
             BiomeSquared = left.BiomeSquared - right.BiomeSquared
         };

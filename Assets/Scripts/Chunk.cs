@@ -20,6 +20,7 @@ public class Chunk : MonoBehaviour
     MeshFilter filter;
     MeshCollider coll;
     private MeshRenderer meshRenderer;
+    private Material originalMaterial;
     private Mesh renderMesh;
     private Mesh colliderMesh;
 
@@ -28,6 +29,7 @@ public class Chunk : MonoBehaviour
         filter = gameObject.GetComponent<MeshFilter>();
         coll = gameObject.GetComponent<MeshCollider>();
         meshRenderer = gameObject.GetComponent<MeshRenderer>();
+        originalMaterial = meshRenderer.sharedMaterial;
     }
 
     internal void ShowDetail(bool visible)
@@ -118,6 +120,8 @@ public class Chunk : MonoBehaviour
         try
         {
             buffer.PrepareCollisionFaces(chunkSize);
+            bool blendTextures = world != null && world.HasBiomeTextureBlend;
+            buffer.WriteBiomeFlags = blendTextures;
             MeshData meshData = buffer;
             int index = 0;
             for (int x = 0; x < chunkSize; x++)
@@ -131,12 +135,15 @@ public class Chunk : MonoBehaviour
                             continue;
 
                         meshData.MergeCollisionFaces = id != BlockId.Custom;
+                        if (blendTextures)
+                            meshData.BlendFace = IsBiomeSurface(id, x, z);
                         Block block = GetStoredBlock(index);
                         meshData = block.Blockdata(this, x, y, z, meshData);
                     }
                 }
             }
             meshData.FinishCollisionFaces();
+            meshData.FinishBiomeFlags();
             RenderMesh(meshData);
         }
         finally
@@ -146,6 +153,17 @@ public class Chunk : MonoBehaviour
         }
     }
 
+    private bool IsBiomeSurface(BlockId id, int x, int z)
+    {
+        return id switch
+        {
+            BlockId.DirtGrass or BlockId.Sand or BlockId.GrassNormal or BlockId.GrassDark
+                or BlockId.GrassTropical or BlockId.GrassDry => true,
+            BlockId.Snow => world.readImg.GetBiome(pos.x + x, pos.z + z) == Biome.ColdDesert,
+            _ => false
+        };
+    }
+
     //Sends the calculated mesh information
     //to the mesh and collision components
     void RenderMesh(MeshData meshData)
@@ -153,10 +171,14 @@ public class Chunk : MonoBehaviour
         if (renderMesh == null)
             renderMesh = filter.mesh;
 
-        renderMesh.Clear();
+        if (world != null)
+            meshRenderer.sharedMaterial = world.GetTerrainMaterial(originalMaterial);
+        renderMesh.Clear(keepVertexLayout: false);
         renderMesh.SetVertices(meshData.vertices);
         renderMesh.SetTriangles(meshData.triangles, 0);
         renderMesh.SetUVs(0, meshData.uv);
+        if (meshData.biomeFlags.Count > 0)
+            renderMesh.SetColors(meshData.biomeFlags);
         renderMesh.RecalculateNormals();
 
         coll.sharedMesh = null;

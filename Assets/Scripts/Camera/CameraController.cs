@@ -54,7 +54,7 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        if (terrain.IsBuilding)
+        if (terrain.IsBuilding || !terrain.readImg.HasPaintedPixels)
             return;
 
         if (Input.GetKeyDown(KeyCode.K))

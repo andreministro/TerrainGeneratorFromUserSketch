@@ -21,8 +21,9 @@ public partial class TerrainManager : MonoBehaviour
     private float voxelSize = 1f;
     [SerializeField, Min(1f)] private float buildBudgetMilliseconds = 8f;
     [SerializeField, Range(0, MaxBiomeBlendWidth)]
-    [Tooltip("Number of voxel columns to smooth on each side of a biome border. Water stays at its own level. Zero keeps sharp borders.")]
+    [Tooltip("Number of voxel columns to blend heights and land textures on each side of a biome border. Zero keeps sharp borders.")]
     private int biomeBlendWidth = 25;
+    [SerializeField, HideInInspector] private Shader biomeBlendShader;
     [SerializeField, Tooltip("Edit a biome in Play Mode to rebuild the current sketch with its new noise settings.")]
     private BiomeNoiseProfiles biomeNoise = BiomeNoiseProfiles.Default;
 
@@ -35,9 +36,14 @@ public partial class TerrainManager : MonoBehaviour
     private int sketchWidth;
     private BiomeNoiseProfiles buildNoise;
     private int buildBiomeBlendWidth;
+    private Material biomeMaterial;
+    private BiomeTextureBlend textureBlend;
+    private BiomeTextureBlend pendingTextureBlend;
     private volatile bool settingsNeedCheck;
     private float settingsRebuildAt = float.PositiveInfinity;
     private int BiomeBlendWidth => Mathf.Clamp(biomeBlendWidth, 0, MaxBiomeBlendWidth);
+    internal bool HasBiomeTextureBlend => biomeMaterial != null && buildBiomeBlendWidth > 0;
+    private bool UsesPaintedMask => UsesStreaming && readImg.HasPaintedPixels && readImg.HasBlankPixels;
 
     private void Awake()
     {
@@ -93,6 +99,7 @@ public partial class TerrainManager : MonoBehaviour
 
         VoxelSize = size;
         chunkRoot.localScale = Vector3.one * size;
+        UpdateBiomeTextureTransform();
     }
 
     public void CreateChunk(int x, int y, int z)
@@ -117,6 +124,73 @@ public partial class TerrainManager : MonoBehaviour
 
         terrainGeneration.ChunkGeneration(newChunk);
         return newChunk;
+    }
+
+    internal Material GetTerrainMaterial(Material original)
+    {
+        return HasBiomeTextureBlend ? biomeMaterial : original;
+    }
+
+    private void PrepareBiomeMaterial()
+    {
+        if (!readImg.HasPaintedPixels || (buildBiomeBlendWidth == 0 && !UsesPaintedMask)
+            || biomeBlendShader == null || biomeMaterial != null)
+            return;
+
+        biomeMaterial = new Material(chunkPrefab.GetComponent<MeshRenderer>().sharedMaterial)
+        {
+            shader = biomeBlendShader,
+            name = "Biome Blend (Runtime)",
+            hideFlags = HideFlags.DontSave
+        };
+        UpdateBiomeTextureTransform();
+        biomeMaterial.SetVector("_BiomeMapSize", new Vector4(readImg.mapWidth, readImg.mapHeight,
+            readImg.mapWidth / 2 + 0.5f, readImg.mapHeight / 2 + 0.5f));
+    }
+
+    private void UpdateBiomeTextureTransform()
+    {
+        if (biomeMaterial != null)
+            biomeMaterial.SetMatrix("_WorldToBiome", chunkRoot.worldToLocalMatrix);
+    }
+
+    private IEnumerator BuildBiomeTexture()
+    {
+        if (!HasBiomeTextureBlend)
+        {
+            ReleaseBiomeTexture();
+            yield break;
+        }
+        if (textureBlend != null && textureBlend.Radius == buildBiomeBlendWidth)
+            yield break;
+
+        pendingTextureBlend = new BiomeTextureBlend(readImg, buildBiomeBlendWidth);
+        var work = Stopwatch.StartNew();
+        for (int z = 0; z < pendingTextureBlend.Rows; z++)
+        {
+            pendingTextureBlend.WriteRow(z);
+            if (work.Elapsed.TotalMilliseconds >= buildBudgetMilliseconds)
+            {
+                yield return null;
+                work.Restart();
+            }
+        }
+        pendingTextureBlend.ApplyTo(biomeMaterial);
+        textureBlend?.Dispose();
+        textureBlend = pendingTextureBlend;
+        pendingTextureBlend = null;
+    }
+
+    private void ReleaseBiomeTexture()
+    {
+        if (biomeMaterial != null)
+        {
+            biomeMaterial.SetFloat("_BlendBiomes", 0f);
+            biomeMaterial.SetTexture("_BiomeWeights1", null);
+            biomeMaterial.SetTexture("_BiomeWeights2", null);
+        }
+        textureBlend?.Dispose();
+        textureBlend = null;
     }
     
 
@@ -159,6 +233,7 @@ public partial class TerrainManager : MonoBehaviour
         settingsRebuildAt = float.PositiveInfinity;
         buildNoise = biomeNoise;
         buildBiomeBlendWidth = BiomeBlendWidth;
+        PrepareBiomeMaterial();
         var terrainGeneration = new TerrainGeneration(readImg, buildNoise,
             cachedSketchWidth: UsesStreaming ? 0 : sketchWidth, biomeBlendWidth: buildBiomeBlendWidth);
         if (UsesStreaming)
@@ -184,6 +259,7 @@ public partial class TerrainManager : MonoBehaviour
         {
             // Let the progress panel render before starting the first batch.
             yield return null;
+            yield return BuildBiomeTexture();
 
             var generatedChunks = new List<Chunk>(chunkCount);
             var frameWork = Stopwatch.StartNew();
@@ -193,6 +269,9 @@ public partial class TerrainManager : MonoBehaviour
                 {
                     for (int z = minChunk; z <= maxChunk; z += chunkSize)
                     {
+                        if (!readImg.HasPaintedChunk(x, z))
+                            continue;
+
                         if (chunks.TryGetValue(new WorldPosition(x, y, z), out Chunk chunk))
                         {
                             chunk.ClearBlocks();
@@ -249,6 +328,8 @@ public partial class TerrainManager : MonoBehaviour
 
         StopCoroutine(buildRoutine);
         buildRoutine = null;
+        pendingTextureBlend?.Dispose();
+        pendingTextureBlend = null;
         DiscardPartialTerrain();
     }
 
@@ -263,7 +344,7 @@ public partial class TerrainManager : MonoBehaviour
         chunks.Clear();
     }
 
-    private static int GetChunkOrigin(int coordinate)
+    internal static int GetChunkOrigin(int coordinate)
     {
         return Mathf.FloorToInt(coordinate / (float)Chunk.chunkSize) * Chunk.chunkSize;
     }

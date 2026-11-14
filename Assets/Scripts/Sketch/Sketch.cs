@@ -4,10 +4,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-[RequireComponent(typeof(MeshCollider), typeof(MeshRenderer))]
 public class Sketch : MonoBehaviour
 {
-    private static readonly int MainTexture = Shader.PropertyToID("_MainTex");
     private const int MaxUndoStrokes = 20;
     private const int UndoMemoryBudgetBytes = 128 * 1024 * 1024;
 
@@ -16,8 +14,7 @@ public class Sketch : MonoBehaviour
     private readonly List<Color32[]> undoHistory = new List<Color32[]>(MaxUndoStrokes);
     private int resolution;
     private int undoCapacity;
-    private MeshCollider canvasCollider;
-    private Camera viewCamera;
+    private RectTransform drawArea;
     private Texture2D canvasTexture;
     private Color32? brushColor;
     private float brushSize = 0.1f;
@@ -25,14 +22,13 @@ public class Sketch : MonoBehaviour
     private bool strokeRecorded;
     private Vector2Int? lastPixel;
 
-    internal void OpenCanvas(int size)
+    internal void OpenCanvas(int size, RawImage preview)
     {
         resolution = size;
         undoCapacity = Mathf.Clamp(UndoMemoryBudgetBytes / (resolution * resolution * 4), 1, MaxUndoStrokes);
         undoHistory.Clear();
         undoButton.interactable = false;
-        canvasCollider = GetComponent<MeshCollider>();
-        viewCamera = Camera.main;
+        drawArea = preview.rectTransform;
         canvasTexture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, mipChain: false)
         {
             name = "Sketch Canvas",
@@ -41,16 +37,10 @@ public class Sketch : MonoBehaviour
         };
 
         var pixels = canvasTexture.GetRawTextureData<Color32>();
-        Color32 background = BiomePalette.GetColor(Biome.ColdDesert);
         for (int i = 0; i < pixels.Length; i++)
-            pixels[i] = background;
+            pixels[i] = default;
         canvasTexture.Apply(updateMipmaps: false);
-
-        var renderer = GetComponent<MeshRenderer>();
-        var properties = new MaterialPropertyBlock();
-        renderer.GetPropertyBlock(properties);
-        properties.SetTexture(MainTexture, canvasTexture);
-        renderer.SetPropertyBlock(properties);
+        preview.texture = canvasTexture;
     }
 
     private void LateUpdate()
@@ -94,15 +84,16 @@ public class Sketch : MonoBehaviour
     private bool TryGetCanvasPixel(Vector2 screenPosition, out Vector2Int pixel)
     {
         pixel = default;
-        if (viewCamera == null || !viewCamera.pixelRect.Contains(screenPosition)
+        if (drawArea == null
             || (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
             return false;
 
-        Ray ray = viewCamera.ScreenPointToRay(screenPosition);
-        if (!canvasCollider.Raycast(ray, out RaycastHit hit, Mathf.Infinity))
+        Rect rect = drawArea.rect;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(drawArea, screenPosition, null, out Vector2 local)
+            || !rect.Contains(local))
             return false;
 
-        Vector2 uv = hit.textureCoord;
+        Vector2 uv = Rect.PointToNormalized(rect, local);
         pixel = new Vector2Int(
             Mathf.Clamp(Mathf.FloorToInt(uv.x * resolution), 0, resolution - 1),
             Mathf.Clamp(Mathf.FloorToInt(uv.y * resolution), 0, resolution - 1));
@@ -239,6 +230,7 @@ public class Sketch : MonoBehaviour
     public void ChangeBrushtoColdDesert() => brushColor = BiomePalette.GetColor(Biome.ColdDesert);
     public void ChangeBrushtoSavannah() => brushColor = BiomePalette.GetColor(Biome.Savannah);
     public void ChangeBrushtoTropicalForest() => brushColor = BiomePalette.GetColor(Biome.TropicalForest);
+    public void Erase() => brushColor = new Color32(0, 0, 0, 0);
 
     internal byte[] EncodePng() => canvasTexture.EncodeToPNG();
 

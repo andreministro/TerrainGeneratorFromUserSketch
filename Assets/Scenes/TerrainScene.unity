@@ -733,150 +733,152 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   detailRadius: 10
-  overviewDetail: 8
+  overviewDetail: 4
   chunkPrefab: {fileID: 2092602343790702732, guid: 27ca37799ca4f0c4d9e0cc74525e4824,
     type: 3}
   readImg: {fileID: 865928}
   voxelSize: 1
   buildBudgetMilliseconds: 8
+  biomeBlendWidth: 25
+  biomeBlendShader: {fileID: 4800000, guid: 4f8887345ffe421fa3f7a8ae65976580, type: 3}
   biomeNoise:
     water:
-      baseElevation: -30
-      minimumElevation: -15
-      hillFrequency: 0.000000001
-      hillHeightRange: 4
+      baseElevation: -6
+      minimumElevation: -6
+      hillFrequency: 0
+      hillHeightRange: 0
       detailFrequency: 0
-      detailHeightRange: 4
-      surfaceThickness: 3
-      surfaceFrequency: 0.0001
-      surfaceHeightRange: 2
+      detailHeightRange: 0
+      surfaceThickness: 6
+      surfaceFrequency: 0
+      surfaceHeightRange: 0
     temperateForest:
       height:
-        baseElevation: -28
-        minimumElevation: -12
-        hillFrequency: 0.0008
-        hillHeightRange: 20
-        detailFrequency: 0.05
-        detailHeightRange: 4
-        surfaceThickness: 3
-        surfaceFrequency: 0.04
-        surfaceHeightRange: 3
-      caveFrequency: 0.025
-      caveCutoff: 7
+        baseElevation: -1
+        minimumElevation: 0
+        hillFrequency: 0.012
+        hillHeightRange: 12
+        detailFrequency: 0.055
+        detailHeightRange: 2
+        surfaceThickness: 2
+        surfaceFrequency: 0.032
+        surfaceHeightRange: 1
+      caveFrequency: 0.032
+      caveCutoff: 12
     alpineTundra:
       height:
-        baseElevation: 10
-        minimumElevation: -80
-        hillFrequency: 0.01
-        hillHeightRange: 50
-        detailFrequency: 0.05
-        detailHeightRange: 4
+        baseElevation: -1
+        minimumElevation: 3
+        hillFrequency: 0.017
+        hillHeightRange: 28
+        detailFrequency: 0.055
+        detailHeightRange: 2
         surfaceThickness: 1
-        surfaceFrequency: 0.04
-        surfaceHeightRange: 3
-      caveFrequency: 0.055
-      caveCutoff: 20
-      snowline: 55
+        surfaceFrequency: 0.032
+        surfaceHeightRange: 1
+      caveFrequency: 0.036
+      caveCutoff: 14
+      snowline: 22
     hotDesert:
       height:
-        baseElevation: -28
-        minimumElevation: -12
-        hillFrequency: 0.0008
-        hillHeightRange: 20
-        detailFrequency: 0.05
-        detailHeightRange: 4
-        surfaceThickness: 3
-        surfaceFrequency: 0.04
-        surfaceHeightRange: 3
-      caveFrequency: 0.025
-      caveCutoff: 7
+        baseElevation: -2
+        minimumElevation: -1
+        hillFrequency: 0.009
+        hillHeightRange: 7
+        detailFrequency: 0.055
+        detailHeightRange: 2
+        surfaceThickness: 2
+        surfaceFrequency: 0.032
+        surfaceHeightRange: 1
+      caveFrequency: 0.03
+      caveCutoff: 8
     taiga:
       height:
-        baseElevation: 5
-        minimumElevation: -60
-        hillFrequency: 0.012
-        hillHeightRange: 48
-        detailFrequency: 0.05
-        detailHeightRange: 4
-        surfaceThickness: 1
-        surfaceFrequency: 0.04
-        surfaceHeightRange: 3
-      caveFrequency: 0.055
-      caveCutoff: 20
-      snowline: 40
+        baseElevation: -1
+        minimumElevation: 1
+        hillFrequency: 0.010
+        hillHeightRange: 14
+        detailFrequency: 0.055
+        detailHeightRange: 2
+        surfaceThickness: 2
+        surfaceFrequency: 0.032
+        surfaceHeightRange: 1
+      caveFrequency: 0.034
+      caveCutoff: 10
+      snowline: 15
     coldDesert:
       height:
-        baseElevation: -28
-        minimumElevation: -12
-        hillFrequency: 0.0008
-        hillHeightRange: 20
-        detailFrequency: 0.05
-        detailHeightRange: 4
-        surfaceThickness: 3
-        surfaceFrequency: 0.04
-        surfaceHeightRange: 3
-      caveFrequency: 0.025
-      caveCutoff: 7
+        baseElevation: -1
+        minimumElevation: 0
+        hillFrequency: 0.009
+        hillHeightRange: 9
+        detailFrequency: 0.055
+        detailHeightRange: 2
+        surfaceThickness: 1
+        surfaceFrequency: 0.032
+        surfaceHeightRange: 1
+      caveFrequency: 0.029
+      caveCutoff: 12
     tropicalForest:
       height:
-        baseElevation: -28
-        minimumElevation: -12
-        hillFrequency: 0.0008
-        hillHeightRange: 20
-        detailFrequency: 0.05
-        detailHeightRange: 4
-        surfaceThickness: 3
-        surfaceFrequency: 0.04
-        surfaceHeightRange: 3
-      caveFrequency: 0.025
-      caveCutoff: 7
+        baseElevation: -1
+        minimumElevation: 0
+        hillFrequency: 0.014
+        hillHeightRange: 17
+        detailFrequency: 0.055
+        detailHeightRange: 2
+        surfaceThickness: 2
+        surfaceFrequency: 0.032
+        surfaceHeightRange: 1
+      caveFrequency: 0.032
+      caveCutoff: 12
     savannah:
       height:
-        baseElevation: -28
-        minimumElevation: -12
-        hillFrequency: 0.0008
-        hillHeightRange: 20
-        detailFrequency: 0.05
-        detailHeightRange: 4
-        surfaceThickness: 3
-        surfaceFrequency: 0.04
-        surfaceHeightRange: 3
-      caveFrequency: 0.025
-      caveCutoff: 7
+        baseElevation: -2
+        minimumElevation: -1
+        hillFrequency: 0.007
+        hillHeightRange: 5
+        detailFrequency: 0.055
+        detailHeightRange: 1
+        surfaceThickness: 2
+        surfaceFrequency: 0.032
+        surfaceHeightRange: 1
+      caveFrequency: 0.031
+      caveCutoff: 9
     vegetation:
       temperateForest:
         trees:
-          frequency: 0.6
-          spawnCutoff: 4
+          frequency: 0.46
+          spawnCutoff: 5
         redFlowers:
           frequency: 0.7
-          spawnCutoff: 8
+          spawnCutoff: 6
         blueFlowers:
           frequency: 0.73
-          spawnCutoff: 6
+          spawnCutoff: 5
         pinkFlowers:
           frequency: 0.71
-          spawnCutoff: 7
+          spawnCutoff: 5
       hotDesert:
         cacti:
-          frequency: 0.7
-          spawnCutoff: 6
+          frequency: 0.3
+          spawnCutoff: 3
         dryShrubs:
-          frequency: 0.9
-          spawnCutoff: 10
+          frequency: 0.65
+          spawnCutoff: 6
       taigaTrees:
-        frequency: 0.6
-        spawnCutoff: 3
+        frequency: 0.42
+        spawnCutoff: 4
       coldDesertFrozenShrubs:
-        frequency: 0.9
-        spawnCutoff: 10
+        frequency: 0.52
+        spawnCutoff: 5
       tropicalForest:
         trees:
-          frequency: 0.9
-          spawnCutoff: 11
+          frequency: 0.65
+          spawnCutoff: 5
         bushes:
           frequency: 0.8
-          spawnCutoff: 15
+          spawnCutoff: 7
       savannahTrees:
         frequency: 0.35
         spawnCutoff: 3

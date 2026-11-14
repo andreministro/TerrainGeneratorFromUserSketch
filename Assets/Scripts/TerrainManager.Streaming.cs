@@ -25,7 +25,7 @@ public partial class TerrainManager
     private RectInt? meshingWindow;
 
     internal bool UsesStreaming => sketchWidth > FullDetailMaxSize;
-    internal bool HasTerrain => overview != null || chunks.Count > 0;
+    internal bool HasTerrain => overview != null || chunks.Count > 0 || BuildVersion > 0;
     internal bool IsStreamingDetail => streamRoutine != null;
     internal int OverviewVersion { get; private set; }
     private int TopChunk => (sketchWidth <= 64 ? 1 : 3) * Chunk.chunkSize;
@@ -50,6 +50,7 @@ public partial class TerrainManager
 
         Vector2Int voxel = GetHorizontalVoxel(position);
         return voxel.x >= MinVoxel && voxel.x <= MaxVoxel && voxel.y >= MinVoxel && voxel.y <= MaxVoxel
+            && readImg.GetBiome(voxel.x, voxel.y) != Biome.None
             && (!UsesStreaming || residentWindow.Contains(GetColumn(voxel)));
     }
 
@@ -58,6 +59,16 @@ public partial class TerrainManager
         Vector3 local = chunkRoot.InverseTransformPoint(position);
         local.x = Mathf.Clamp(local.x, MinVoxel, MaxVoxel);
         local.z = Mathf.Clamp(local.z, MinVoxel, MaxVoxel);
+        if (readImg.HasBlankPixels)
+        {
+            var near = new Vector2Int(Mathf.FloorToInt(local.x + 0.5f), Mathf.FloorToInt(local.z + 0.5f));
+            Vector2Int painted = readImg.FindPaintedColumn(near);
+            if (painted != near)
+            {
+                local.x = painted.x;
+                local.z = painted.y;
+            }
+        }
         return chunkRoot.TransformPoint(local);
     }
 
@@ -88,10 +99,11 @@ public partial class TerrainManager
 
     internal Vector3 GetFlyStart()
     {
+        Vector2Int origin = readImg.FindPaintedColumn(Vector2Int.zero);
         int y = 10;
         if (streamGeneration != null)
-            y = Mathf.Max(y, streamGeneration.GetOverviewSurface(0, 0, out _) + 8);
-        return chunkRoot.TransformPoint(new Vector3(0f, y, 0f));
+            y = Mathf.Max(y, streamGeneration.GetOverviewSurface(origin.x, origin.y, out _) + 8);
+        return chunkRoot.TransformPoint(new Vector3(origin.x, y, origin.y));
     }
 
     private void BeginOverviewBuild(TerrainGeneration generation, bool regenerateTerrain)
@@ -100,8 +112,9 @@ public partial class TerrainManager
         buildOverviewDetail = overviewDetail;
         if (regenerateTerrain)
             StopStreaming();
-        var nextOverview = new TerrainOverview(chunkRoot,
-            chunkPrefab.GetComponent<MeshRenderer>().sharedMaterial, sketchWidth, TopChunk, buildOverviewDetail);
+        Material material = UsesPaintedMask && biomeMaterial != null ? biomeMaterial
+            : GetTerrainMaterial(chunkPrefab.GetComponent<MeshRenderer>().sharedMaterial);
+        var nextOverview = new TerrainOverview(chunkRoot, material, readImg, TopChunk, buildOverviewDetail, HasBiomeTextureBlend);
         buildRoutine = StartCoroutine(BuildOverview(nextOverview, generation, regenerateTerrain));
     }
 
@@ -111,8 +124,10 @@ public partial class TerrainManager
         try
         {
             yield return null;
+            if (regenerateTerrain)
+                yield return BuildBiomeTexture();
             var work = Stopwatch.StartNew();
-            for (int tile = 0; tile < nextOverview.TileCount; tile++)
+            for (int tile = 0; readImg.HasPaintedPixels && tile < nextOverview.TileCount; tile++)
             {
                 nextOverview.AddTile(tile, generation);
                 if (work.Elapsed.TotalMilliseconds >= buildBudgetMilliseconds)
@@ -142,7 +157,7 @@ public partial class TerrainManager
 
     private void UpdateStreaming()
     {
-        if (overview == null || IsBuilding || explorationTarget == null || streamRoutine != null)
+        if (overview == null || IsBuilding || explorationTarget == null || streamRoutine != null || !readImg.HasPaintedPixels)
             return;
 
         Vector2Int focus = GetColumn(GetHorizontalVoxel(explorationTarget.position));
@@ -175,6 +190,8 @@ public partial class TerrainManager
                 window.width * size + 4, window.height * size + 4));
             foreach (Vector2Int column in window.allPositionsWithin)
             {
+                if (!readImg.HasPaintedChunk(column.x * size, column.y * size))
+                    continue;
                 bool entering = !residentWindow.Contains(column);
                 if (!entering && !HasChangedNeighbor(column, window))
                     continue;
@@ -221,8 +238,8 @@ public partial class TerrainManager
                 for (int y = -size; y <= TopChunk; y += size)
                 {
                     var position = new WorldPosition(column.x * size, y, column.y * size);
-                    Chunk chunk = chunks[position];
-                    chunks.Remove(position);
+                    if (!chunks.Remove(position, out Chunk chunk))
+                        continue;
                     chunk.ShowDetail(false);
                     Destroy(chunk.gameObject);
                 }
@@ -298,5 +315,12 @@ public partial class TerrainManager
         return new Vector2Int(position.x / Chunk.chunkSize, position.z / Chunk.chunkSize);
     }
 
-    private void OnDestroy() => overview?.Dispose();
+    private void OnDestroy()
+    {
+        overview?.Dispose();
+        pendingTextureBlend?.Dispose();
+        ReleaseBiomeTexture();
+        if (biomeMaterial != null)
+            Destroy(biomeMaterial);
+    }
 }
